@@ -185,7 +185,7 @@ export function LocationPicker({
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="@container/picker grid gap-3 @md/picker:grid-cols-2">
         <PickerField
           id="geo-continent"
           label="Châu lục"

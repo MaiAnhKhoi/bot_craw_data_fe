@@ -13,7 +13,7 @@ import { ErrorState } from "@/components/shared/error-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { PaginationBar } from "@/components/shared/pagination-bar";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
-import { CreateJobDialog } from "@/features/jobs/components/jobs/create-job-dialog";
+import { CreateJobSheet } from "@/features/jobs/components/jobs/create-job-sheet";
 import {
   JOB_TABLE_COLUMNS,
   JobsTable,
@@ -59,7 +59,7 @@ export function JobsScreen() {
       <PageHeader
         title="Job quét"
         description="Đặt lệnh quét Google Maps và theo dõi tiến độ."
-        actions={<CreateJobDialog />}
+        actions={<CreateJobSheet />}
       />
 
       <Card size="sm" className="gap-0 py-0">
