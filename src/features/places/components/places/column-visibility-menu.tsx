@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -44,19 +45,27 @@ export function ColumnVisibilityMenu({
         Cột
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuLabel>Hiện cột</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {HIDEABLE_COLUMN_IDS.map((id) => (
-          <DropdownMenuCheckboxItem
-            key={id}
-            checked={visibility[id] !== false}
-            onCheckedChange={(checked) =>
-              onChange({ ...visibility, [id]: checked })
-            }
-          >
-            {PLACE_COLUMN_LABELS[id] ?? id}
-          </DropdownMenuCheckboxItem>
-        ))}
+        {/*
+         * DropdownMenuLabel là <Menu.GroupLabel> của Base UI: nó ĐỌC context của
+         * <Menu.Group>. Đặt ngoài Group thì component ném lỗi ngay lúc mở menu và
+         * kéo sập cả trang (Base UI error #31). Vì vậy label + danh sách phải nằm
+         * trong DropdownMenuGroup.
+         */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Hiện cột</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {HIDEABLE_COLUMN_IDS.map((id) => (
+            <DropdownMenuCheckboxItem
+              key={id}
+              checked={visibility[id] !== false}
+              onCheckedChange={(checked) =>
+                onChange({ ...visibility, [id]: checked })
+              }
+            >
+              {PLACE_COLUMN_LABELS[id] ?? id}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -29,6 +29,12 @@ export const STALE_TIME = {
   worker: 30_000,
   places: 10_000,
   jobs: 10_000,
+  /*
+   * Danh mục địa giới hành chính (/geo/*) là dữ liệu THAM CHIẾU TĨNH — backend
+   * nạp từ một file JSON được commit, mỗi năm đổi một lần. Không có lý do gì để
+   * nó cũ đi giữa phiên làm việc, nên không bao giờ refetch.
+   */
+  geo: Infinity,
 } as const;
 
 /** Cỡ trang mặc định; backend chặn tối đa 200. */

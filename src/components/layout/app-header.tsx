@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -70,14 +71,21 @@ export function AppHeader() {
           <UserIcon />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuLabel className="truncate text-sm text-foreground">
-            {user?.full_name || user?.username || "Đang tải..."}
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onClick={logout}>
-            <LogOutIcon />
-            Đăng xuất
-          </DropdownMenuItem>
+          {/*
+           * Bắt buộc bọc trong DropdownMenuGroup: DropdownMenuLabel là
+           * <Menu.GroupLabel> của Base UI, nó đọc context của <Menu.Group>.
+           * Thiếu Group thì bấm vào nút tài khoản là sập trang (Base UI error #31).
+           */}
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="truncate text-sm text-foreground">
+              {user?.full_name || user?.username || "Đang tải..."}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={logout}>
+              <LogOutIcon />
+              Đăng xuất
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>

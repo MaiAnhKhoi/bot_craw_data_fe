@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LoaderCircleIcon, PlusIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  LoaderCircleIcon,
+  MapPinnedIcon,
+  PlusIcon,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,8 +32,10 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { LocationPicker } from "@/features/geo/components/location-picker";
 import { useCreateJob } from "@/features/jobs/hooks/use-job-mutations";
 import { DETAIL_MODE_OPTIONS } from "@/features/jobs/lib/job-status";
+import { mergeLocationLines } from "@/features/jobs/lib/locations-text";
 import {
   JOB_FORM_DEFAULTS,
   jobFormSchema,
@@ -35,6 +43,7 @@ import {
   type JobFormInput,
 } from "@/features/jobs/schemas/job-schema";
 import { splitLines } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 /*
  * Dialog tạo job quét.
@@ -52,6 +61,12 @@ function FieldError({ message }: { message?: string }) {
 
 export function CreateJobDialog() {
   const [open, setOpen] = useState(false);
+  /*
+   * Bộ chọn địa giới mặc định THU GỌN, và khi thu gọn thì không render.
+   * Không phải để cho gọn mắt: nó unmount luôn cả các query danh mục, nên người
+   * dùng tự gõ địa điểm không phải trả giá bằng request nào (Rule 1).
+   */
+  const [pickerOpen, setPickerOpen] = useState(false);
   const createJob = useCreateJob();
 
   const form = useForm<JobFormInput>({
@@ -73,7 +88,32 @@ export function CreateJobDialog() {
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
-    if (!next) form.reset(JOB_FORM_DEFAULTS);
+    if (!next) {
+      form.reset(JOB_FORM_DEFAULTS);
+      setPickerOpen(false);
+    }
+  };
+
+  /*
+   * Bộ chọn địa giới chỉ GHI THÊM vào ô textarea — textarea vẫn là nguồn sự thật
+   * duy nhất gửi lên `/jobs`. Dòng người dùng tự gõ được giữ nguyên, dòng trùng
+   * bị bỏ (xem `mergeLocationLines`).
+   */
+  const handleAddLocations = (locations: string[]) => {
+    const { text, added } = mergeLocationLines(
+      form.getValues("locations"),
+      locations,
+    );
+    if (added === 0) {
+      toast.info("Các địa điểm này đã có trong danh sách.");
+      return;
+    }
+    form.setValue("locations", text, { shouldDirty: true });
+    toast.success(`Đã thêm ${added} địa điểm.`);
+  };
+
+  const handleClearLocations = () => {
+    form.setValue("locations", "", { shouldDirty: true });
   };
 
   const onSubmit = form.handleSubmit((input) => {
@@ -89,7 +129,7 @@ export function CreateJobDialog() {
         Tạo job
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Tạo job quét</DialogTitle>
           <DialogDescription>
@@ -123,6 +163,36 @@ export function CreateJobDialog() {
           </div>
 
           <div className="space-y-1.5">
+            <div className="rounded-lg border">
+              <button
+                type="button"
+                onClick={() => setPickerOpen((previous) => !previous)}
+                aria-expanded={pickerOpen}
+                aria-controls="geo-picker"
+                className="flex w-full items-center justify-between gap-2 rounded-lg p-2.5 text-sm font-medium outline-none hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <span className="flex items-center gap-2">
+                  <MapPinnedIcon className="size-4 shrink-0 text-muted-foreground" />
+                  Chọn nhanh theo địa giới hành chính
+                </span>
+                <ChevronDownIcon
+                  className={cn(
+                    "size-4 shrink-0 text-muted-foreground transition-transform",
+                    pickerOpen && "rotate-180",
+                  )}
+                />
+              </button>
+              {pickerOpen ? (
+                <div id="geo-picker" className="border-t p-2.5">
+                  <LocationPicker
+                    keywordCount={keywordCount}
+                    onAdd={handleAddLocations}
+                    onClear={handleClearLocations}
+                  />
+                </div>
+              ) : null}
+            </div>
+
             <Label htmlFor="job-locations">
               Địa điểm (mỗi dòng một nơi, để trống nếu không giới hạn)
             </Label>
