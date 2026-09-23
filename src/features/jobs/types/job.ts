@@ -20,6 +20,12 @@ export interface JobCreate {
   keywords: string[];
   /** Nhân tổ hợp với keywords (mỗi cặp từ khoá × địa điểm là một truy vấn). */
   locations?: string[];
+  /*
+   * Từ khoá RIÊNG theo mã quốc gia, vd `{"TH": ["fruit wholesaler"]}`.
+   * Địa điểm thuộc quốc gia có mặt ở đây dùng bộ từ khoá này thay cho `keywords`;
+   * nước nào không khai thì vẫn dùng `keywords` chung.
+   */
+  keyword_map?: Record<string, string[]>;
   hl?: string;
   gl?: string;
   region?: string;

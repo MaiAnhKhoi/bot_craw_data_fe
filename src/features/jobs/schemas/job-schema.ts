@@ -42,13 +42,24 @@ export const JOB_FORM_DEFAULTS: JobFormInput = {
   max_results_per_query: 200,
 };
 
-/* Đổi giá trị form sang DTO JobCreate: tách textarea thành mảng, bỏ dòng trống. */
-export function toJobCreate(input: JobFormInput): JobCreate {
+/*
+ * Đổi giá trị form sang DTO JobCreate: tách textarea thành mảng, bỏ dòng trống.
+ *
+ * `keywordMap` không nằm trong Zod schema vì nó KHÔNG phải thứ người dùng gõ —
+ * nó là kết quả người dùng duyệt ở khối "Từ khoá bản địa" (features/keyword).
+ * Rỗng thì không gửi trường này lên, để payload đúng bằng thứ backend cần.
+ */
+export function toJobCreate(
+  input: JobFormInput,
+  keywordMap: Record<string, string[]> = {},
+): JobCreate {
   const locations = splitLines(input.locations);
   return {
     name: input.name.trim(),
     keywords: splitLines(input.keywords),
     locations: locations.length > 0 ? locations : undefined,
+    keyword_map:
+      Object.keys(keywordMap).length > 0 ? keywordMap : undefined,
     detail_mode: input.detail_mode,
     enrich_website: input.enrich_website,
     ttl_days: input.ttl_days,

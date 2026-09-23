@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ChevronDownIcon,
@@ -32,6 +32,12 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { LocationPicker } from "@/features/geo/components/location-picker";
+import { KeywordLocalizer } from "@/features/keyword/components/keyword-localizer";
+import { useLocationCountries } from "@/features/keyword/hooks/use-location-countries";
+import {
+  buildKeywordMap,
+  countQueries,
+} from "@/features/keyword/lib/keyword-map";
 import { useCreateJob } from "@/features/jobs/hooks/use-job-mutations";
 import { DETAIL_MODE_OPTIONS } from "@/features/jobs/lib/job-status";
 import { mergeLocationLines } from "@/features/jobs/lib/locations-text";
@@ -41,8 +47,9 @@ import {
   toJobCreate,
   type JobFormInput,
 } from "@/features/jobs/schemas/job-schema";
-import { splitLines } from "@/lib/format";
+import { formatNumber, splitLines } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { CountryKeywords } from "@/features/keyword/types";
 
 /*
  * Panel tạo job quét, trượt vào từ mép phải.
@@ -71,6 +78,12 @@ export function CreateJobSheet() {
    * bằng request nào (Rule 1). Mặc định mở vì panel đã đủ rộng để chứa.
    */
   const [pickerOpen, setPickerOpen] = useState(true);
+  /*
+   * Từ khoá bản địa đã DUYỆT, theo từng quốc gia. Để ở form chứ không trong khối
+   * con: nó là một phần payload gửi lên `/jobs`, và khối con có thể ẩn đi khi
+   * người dùng xoá hết địa điểm nước ngoài.
+   */
+  const [keywordItems, setKeywordItems] = useState<CountryKeywords[]>([]);
   const createJob = useCreateJob();
 
   const form = useForm<JobFormInput>({
@@ -86,15 +99,36 @@ export function CreateJobSheet() {
    */
   const keywordsText = useWatch({ control: form.control, name: "keywords" });
   const locationsText = useWatch({ control: form.control, name: "locations" });
-  const keywordCount = splitLines(keywordsText ?? "").length;
-  const locationCount = splitLines(locationsText ?? "").length;
-  const queryCount = keywordCount * Math.max(locationCount, 1);
+  const keywords = useMemo(() => splitLines(keywordsText ?? ""), [keywordsText]);
+  const locations = useMemo(
+    () => splitLines(locationsText ?? ""),
+    [locationsText],
+  );
+  const keywordCount = keywords.length;
+  const locationCount = locations.length;
+
+  /*
+   * Số truy vấn THẬT.
+   *
+   * Không còn là phép nhân "từ khoá × địa điểm": khi có `keyword_map`, mỗi địa
+   * điểm dùng bộ từ khoá của quốc gia nó thuộc về (Thái Lan 4 từ, Việt Nam 2 từ
+   * thì hai địa điểm không còn sinh ra số truy vấn bằng nhau). Người dùng phải
+   * thấy đúng khối lượng mình đặt ra trước khi bấm Tạo job.
+   */
+  const { codeByLocation } = useLocationCountries(locations);
+  const keywordMap = useMemo(() => buildKeywordMap(keywordItems), [keywordItems]);
+  const hasKeywordMap = Object.keys(keywordMap).length > 0;
+  const queryCount = useMemo(
+    () => countQueries(codeByLocation, keywordCount, keywordMap),
+    [codeByLocation, keywordCount, keywordMap],
+  );
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
     if (!next) {
       form.reset(JOB_FORM_DEFAULTS);
       setPickerOpen(true);
+      setKeywordItems([]);
     }
   };
 
@@ -121,7 +155,7 @@ export function CreateJobSheet() {
   };
 
   const onSubmit = form.handleSubmit((input) => {
-    createJob.mutate(toJobCreate(input), {
+    createJob.mutate(toJobCreate(input, keywordMap), {
       onSuccess: () => handleOpenChange(false),
     });
   });
@@ -335,10 +369,23 @@ export function CreateJobSheet() {
                     {...form.register("locations")}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Sẽ tạo {queryCount} truy vấn ({keywordCount} từ khoá ×{" "}
-                    {Math.max(locationCount, 1)} địa điểm).
+                    {hasKeywordMap
+                      ? `Sẽ tạo ${formatNumber(queryCount)} truy vấn (mỗi quốc gia dùng bộ từ khoá riêng đã duyệt).`
+                      : `Sẽ tạo ${formatNumber(queryCount)} truy vấn (${keywordCount} từ khoá × ${Math.max(locationCount, 1)} địa điểm).`}
                   </p>
                 </div>
+
+                {/*
+                 * Khối duyệt từ khoá bản địa: TỰ ẩn khi danh sách địa điểm không
+                 * chạm quốc gia nào ngoài Việt Nam, nên quét trong nước thì form
+                 * vẫn gọn đúng như trước.
+                 */}
+                <KeywordLocalizer
+                  keywords={keywords}
+                  locations={locations}
+                  value={keywordItems}
+                  onChange={setKeywordItems}
+                />
               </div>
             </div>
           </div>

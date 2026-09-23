@@ -35,6 +35,12 @@ export const STALE_TIME = {
    * nó cũ đi giữa phiên làm việc, nên không bao giờ refetch.
    */
   geo: Infinity,
+  /*
+   * `/keywords/status` chỉ cho biết backend đã cấu hình khoá AI hay chưa. Nó đổi
+   * khi ai đó sửa biến môi trường rồi khởi động lại backend — hiếm, nhưng không
+   * phải không bao giờ, nên 5 phút chứ không vĩnh viễn.
+   */
+  keywords: 5 * 60_000,
 } as const;
 
 /** Cỡ trang mặc định; backend chặn tối đa 200. */
