@@ -1,6 +1,7 @@
 import type {
   DetailMode,
   JobQueryStatus,
+  JobQueryStopReason,
   JobStatus,
 } from "@/features/jobs/types/job";
 
@@ -53,6 +54,86 @@ export const JOB_QUERY_STATUS_META: Record<
   failed: { label: "Lỗi", className: "text-destructive" },
   skipped: { label: "Bỏ qua", className: "text-muted-foreground" },
 };
+
+/*
+ * Nhãn cho lý do dừng. `hint` là câu trả lời cho câu hỏi thực sự của người dùng:
+ * "có phải chia nhỏ địa bàn này ra không?" — nên nó nằm ngay trong tooltip chứ
+ * không bắt người ta tự suy từ con số kết quả.
+ */
+export const STOP_REASON_META: Record<
+  JobQueryStopReason,
+  { label: string; className: string; hint: string }
+> = {
+  exhausted: {
+    label: "Đã quét hết",
+    className:
+      "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
+    hint: "Google báo hết danh sách. Địa bàn này đã lấy trọn, không cần chia nhỏ.",
+  },
+  cut_off: {
+    label: "Google cắt",
+    className:
+      "bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300",
+    hint: "Google ngừng trả thêm kết quả dù còn. Chia nhỏ địa bàn (xuống tỉnh, rồi phường/xã) để lấy tiếp.",
+  },
+  cap: {
+    label: "Chạm trần",
+    className:
+      "bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300",
+    hint: "Dừng vì chạm trần 'Kết quả tối đa / truy vấn' của chính bạn, không phải do Google. Nâng trần rồi chạy lại.",
+  },
+  empty: {
+    label: "Không có",
+    className: "bg-muted text-muted-foreground",
+    hint: "Không tìm thấy kết quả nào. Thường là từ khoá chưa đúng tiếng bản địa chứ không phải địa bàn trống.",
+  },
+  recent: {
+    label: "Vừa quét",
+    className: "bg-muted text-muted-foreground",
+    hint: "Bỏ qua vì chính truy vấn này đã chạy xong gần đây. Muốn quét lại thì tắt 'Bỏ qua địa bàn vừa quét' hoặc giảm số ngày khi tạo job.",
+  },
+  unknown: {
+    label: "Không rõ",
+    className: "bg-muted text-muted-foreground",
+    hint: "Danh sách kết quả không hiện ra. Nên chạy lại truy vấn này.",
+  },
+};
+
+/*
+ * Xếp theo mức CẦN HÀNH ĐỘNG giảm dần: thứ phải xử lý đứng trước.
+ */
+const STOP_REASON_ORDER: JobQueryStopReason[] = [
+  "cut_off",
+  "cap",
+  "exhausted",
+  "recent",
+  "empty",
+  "unknown",
+];
+
+/*
+ * Đếm truy vấn theo lý do dừng.
+ *
+ * Job quét cả nước là 34 dòng, quét tới phường/xã là 3.321 dòng — không ai dò
+ * tay từng dòng để tìm địa bàn còn sót. Dòng tổng này mới là thứ dùng được:
+ * nhìn một cái biết còn bao nhiêu địa bàn phải chia nhỏ.
+ */
+export function tallyStopReasons(
+  queries: { stop_reason: JobQueryStopReason | null }[],
+) {
+  const counts = new Map<JobQueryStopReason, number>();
+  for (const query of queries) {
+    if (!query.stop_reason) continue;
+    counts.set(query.stop_reason, (counts.get(query.stop_reason) ?? 0) + 1);
+  }
+  return STOP_REASON_ORDER.filter((reason) => counts.has(reason)).map(
+    (reason) => ({
+      reason,
+      count: counts.get(reason) ?? 0,
+      meta: STOP_REASON_META[reason],
+    }),
+  );
+}
 
 export const DETAIL_MODE_OPTIONS: { value: DetailMode; label: string }[] = [
   { value: "missing_only", label: "Chỉ khi thiếu dữ liệu (khuyến nghị)" },

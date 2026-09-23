@@ -36,6 +36,7 @@ export const SORTABLE_COLUMN_IDS = new Set([
 export const PLACE_COLUMN_LABELS: Record<string, string> = {
   name: "Tên công ty",
   address: "Vị trí",
+  country: "Quốc gia",
   phone: "SĐT",
   website: "Website",
   liveness: "Tình trạng",
@@ -46,6 +47,17 @@ export const PLACE_COLUMN_LABELS: Record<string, string> = {
 };
 
 const DASH = "—";
+
+/*
+ * Nhãn cho NGUỒN xác định quốc gia. Mục đích là biến một phỏng đoán vô hình
+ * thành phỏng đoán nhìn thấy được: "gl" nghĩa là hệ thống chỉ đoán theo nước
+ * đang tìm, không có bằng chứng nào từ chính địa điểm đó.
+ */
+const NGUON_QUOC_GIA: Record<string, { nhan: string; canh_bao: boolean }> = {
+  address: { nhan: "đọc từ địa chỉ", canh_bao: false },
+  coords: { nhan: "suy từ toạ độ", canh_bao: false },
+  gl: { nhan: "đoán theo nước đang tìm — nên kiểm lại", canh_bao: true },
+};
 
 export const placeColumns: ColumnDef<Place>[] = [
   {
@@ -70,11 +82,82 @@ export const placeColumns: ColumnDef<Place>[] = [
     id: "address",
     accessorKey: "address",
     header: PLACE_COLUMN_LABELS.address,
-    cell: ({ row }) => (
-      <p className="max-w-72 truncate text-muted-foreground">
-        {row.original.address ?? DASH}
-      </p>
-    ),
+    cell: ({ row }) => {
+      const place = row.original;
+      if (!place.address) {
+        return <span className="text-muted-foreground">{DASH}</span>;
+      }
+      /*
+       * `line-clamp-2` chứ không `truncate`: địa chỉ đầy đủ của Google dài hơn
+       * hẳn một dòng, cắt một dòng thì mất sạch phần đuôi — mà đuôi mới là chỗ
+       * ghi tỉnh/thành và quốc gia. `title` giữ phần còn thừa, nút copy để khỏi
+       * phải bôi đen thủ công.
+       *
+       * Hai điều kiện BẮT BUỘC để line-clamp thật sự chạy ở đây, thiếu một cái
+       * là nó âm thầm quay về cắt đúng một dòng:
+       *  1. `whitespace-normal` — TableCell đặt sẵn `whitespace-nowrap`, chữ
+       *     không xuống dòng được thì kẹp mấy dòng cũng vô nghĩa.
+       *  2. Thẻ bị kẹp KHÔNG được là flex item. line-clamp hoạt động bằng
+       *     `display:-webkit-box`, mà flex item thì bị blockify thành
+       *     `flow-root` — thuộc tính vẫn nằm đó nhưng không còn tác dụng. Nên
+       *     dùng khối thường + nút copy đặt tuyệt đối, không dùng flex.
+       */
+      return (
+        // `w-80` chứ không `max-w-80`: khi chữ đã xuống dòng được, bảng
+        // table-auto sẽ co cột này về bề rộng NHỎ NHẤT có thể (min-content)
+        // và ta được hai dòng cụt còn ngắn hơn lúc cắt một dòng.
+        <div className="relative w-80 pe-6">
+          <span
+            className="line-clamp-2 whitespace-normal text-muted-foreground"
+            title={place.address}
+          >
+            {place.address}
+          </span>
+          <CopyButton
+            value={place.address}
+            label={`Sao chép địa chỉ của ${place.name}`}
+            className="absolute end-0 top-0"
+          />
+        </div>
+      );
+    },
+  },
+  {
+    id: "country",
+    accessorKey: "country_code",
+    header: PLACE_COLUMN_LABELS.country,
+    cell: ({ row }) => {
+      const place = row.original;
+      if (!place.country_code) {
+        return <span className="text-muted-foreground">{DASH}</span>;
+      }
+      /*
+       * Mã + tên chứ KHÔNG dùng emoji cờ: cờ quốc gia là cặp ký tự Regional
+       * Indicator, Windows không có glyph nên Chrome trên Windows hiện ra hai
+       * chữ cái trong ô vuông — xấu và không đồng nhất giữa các máy.
+       */
+      const nguon = place.country_source
+        ? NGUON_QUOC_GIA[place.country_source]
+        : undefined;
+      return (
+        <span
+          className="inline-flex items-center gap-1.5 whitespace-nowrap"
+          title={nguon ? `Quốc gia ${nguon.nhan}` : undefined}
+        >
+          <span className="rounded border px-1 py-px text-[10px] font-medium text-muted-foreground">
+            {place.country_code}
+          </span>
+          <span>{place.country_name ?? place.country_code}</span>
+          {/* Chỉ đánh dấu ca YẾU. Đánh dấu cả ba nguồn thì dấu hiệu mất giá trị. */}
+          {nguon?.canh_bao ? (
+            <span
+              aria-label="Quốc gia chỉ là phỏng đoán"
+              className="size-1.5 shrink-0 rounded-full bg-amber-500"
+            />
+          ) : null}
+        </span>
+      );
+    },
   },
   {
     id: "phone",
@@ -100,6 +183,23 @@ export const placeColumns: ColumnDef<Place>[] = [
             value={place.phone_e164 ?? place.phone}
             label={`Sao chép số của ${place.name}`}
           />
+          {/*
+           * Số thuộc nước KHÁC với nước của địa điểm. KHÔNG phải lỗi: doanh
+           * nghiệp Thái niêm yết số Việt Nam thường là đầu mối có người Việt
+           * phụ trách — đáng chú ý theo hướng TỐT. Nên dùng màu trung tính,
+           * đừng dùng màu cảnh báo.
+           */}
+          {place.phone_country_code &&
+          place.country_code &&
+          place.phone_country_code !== place.country_code ? (
+            <Badge
+              variant="secondary"
+              className="shrink-0 font-normal"
+              title={`Số thuộc ${place.phone_country_code}, còn địa điểm ở ${place.country_name ?? place.country_code}`}
+            >
+              {place.phone_country_code}
+            </Badge>
+          ) : null}
         </span>
       );
     },

@@ -14,10 +14,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   useAiStatus,
+  useKeywordPlan,
   useLocalizeKeywords,
   useSaveKeywords,
 } from "@/features/keyword/hooks/use-keywords";
 import { useLocationCountries } from "@/features/keyword/hooks/use-location-countries";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   keywordSourceClass,
   keywordSourceLabel,
@@ -115,6 +117,18 @@ export function KeywordLocalizer({
     [keywords, codes],
   );
   const stale = value.length > 0 && snapshot !== null && snapshot !== signature;
+
+  /*
+   * Xem trước lượt dịch, để CHẶN trước khi người dùng bấm nút chứ không báo lỗi
+   * sau khi họ đã chờ. Debounce vì `signature` đổi theo từng phím gõ ở ô từ khoá.
+   */
+  const debouncedSignature = useDebouncedValue(signature, 400);
+  const plan = useKeywordPlan(
+    { keywords, locations },
+    debouncedSignature,
+    foreignCount > 0 && keywords.length > 0,
+  );
+  const overLimit = plan.data?.over_limit ?? false;
 
   /*
    * `ai_available` của lần gọi gần nhất đáng tin hơn `/keywords/status` đã cache,
@@ -222,7 +236,7 @@ export function KeywordLocalizer({
           size="sm"
           variant="outline"
           onClick={handleLocalize}
-          disabled={!hasKeywords || localize.isPending}
+          disabled={!hasKeywords || localize.isPending || overLimit}
         >
           {localize.isPending ? (
             <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
@@ -236,6 +250,42 @@ export function KeywordLocalizer({
       {!hasKeywords ? (
         <p className="text-xs text-muted-foreground">
           Nhập từ khoá ở cột bên trái trước đã.
+        </p>
+      ) : null}
+
+      {/*
+        * Trần của một lượt dịch. Chặn ngay ở đây thay vì để backend im lặng rơi
+        * về từ khoá gốc: rơi về gốc nghĩa là job vẫn chạy nhưng gõ tiếng Việt ở
+        * Brazil — ra rất ít kết quả mà không có dấu hiệu gì là đã hỏng.
+        */}
+      {plan.data && plan.data.need.length > 0 ? (
+        overLimit ? (
+          <p className="flex items-start gap-1.5 rounded-md bg-amber-100 px-2 py-1.5 text-xs text-amber-900 dark:bg-amber-500/15 dark:text-amber-300">
+            <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
+            <span>
+              Cần dịch {plan.data.need.length} quốc gia, mỗi lượt tối đa{" "}
+              {plan.data.limit}. Bớt địa điểm xuống còn tối đa {plan.data.limit}{" "}
+              nước rồi dịch làm nhiều đợt — bản dịch được nhớ lại nên đợt sau
+              không phải làm lại từ đầu.
+            </span>
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Sẽ dịch {plan.data.need.length}/{plan.data.limit} quốc gia
+            {plan.data.cached.length > 0
+              ? ` (${plan.data.cached.length} nước đã có sẵn, không tốn lượt gọi AI)`
+              : ""}
+            .
+          </p>
+        )
+      ) : null}
+
+      {plan.data &&
+      plan.data.need.length === 0 &&
+      plan.data.cached.length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Cả {plan.data.cached.length} quốc gia đều đã có bản dịch lưu sẵn — bấm
+          gợi ý sẽ lấy lại từ bộ nhớ đệm, không gọi AI.
         </p>
       ) : null}
 

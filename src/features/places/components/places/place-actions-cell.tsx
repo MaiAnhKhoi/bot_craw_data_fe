@@ -23,6 +23,13 @@ export function PlaceActionsCell({ place }: { place: Place }) {
           size="icon-sm"
           aria-label="Mở trên Google Maps"
           title="Mở trên Google Maps"
+          /*
+           * `nativeButton={false}` là BẮT BUỘC khi render thành thẻ không phải
+           * <button>. Base UI mặc định `nativeButton: true`; để nguyên thì nó cảnh
+           * báo ngay ở console và — quan trọng hơn — nó vẫn gắn ngữ nghĩa/thuộc
+           * tính của <button> lên thẻ <a>, làm hỏng trợ năng và hành vi trong form.
+           */
+          nativeButton={false}
           render={
             <a href={place.maps_url} target="_blank" rel="noreferrer noopener" />
           }

@@ -17,6 +17,7 @@ export const jobFormSchema = z.object({
   locations: z.string(),
   detail_mode: z.enum(["always", "missing_only", "never"]),
   enrich_website: z.boolean(),
+  skip_recent_queries: z.boolean(),
   ttl_days: z
     .number({ message: "Nhập số ngày." })
     .int("Số ngày phải là số nguyên.")
@@ -38,6 +39,7 @@ export const JOB_FORM_DEFAULTS: JobFormInput = {
   locations: "",
   detail_mode: "missing_only",
   enrich_website: true,
+  skip_recent_queries: true,
   ttl_days: 90,
   max_results_per_query: 200,
 };
@@ -62,6 +64,7 @@ export function toJobCreate(
       Object.keys(keywordMap).length > 0 ? keywordMap : undefined,
     detail_mode: input.detail_mode,
     enrich_website: input.enrich_website,
+    skip_recent_queries: input.skip_recent_queries,
     ttl_days: input.ttl_days,
     max_results_per_query: input.max_results_per_query,
   };

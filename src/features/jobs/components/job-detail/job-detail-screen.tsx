@@ -7,6 +7,7 @@ import {
   RadioIcon,
   WifiOffIcon,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,6 +21,8 @@ import { JobProgress } from "@/features/jobs/components/shared/job-progress";
 import { JobStatusBadge } from "@/features/jobs/components/shared/job-status-badge";
 import { useJobEvents } from "@/features/jobs/hooks/use-job-events";
 import { useJob } from "@/features/jobs/hooks/use-jobs";
+import { tallyStopReasons } from "@/features/jobs/lib/job-status";
+import { cn } from "@/lib/utils";
 import { JOB_PHASE_LABEL } from "@/types/domain";
 
 /*
@@ -82,6 +85,7 @@ export function JobDetailScreen({ jobId }: { jobId: number }) {
         variant="ghost"
         size="sm"
         className="-ml-2 text-muted-foreground"
+        nativeButton={false}
         render={<Link href={ROUTES.jobs} />}
       >
         <ArrowLeftIcon />
@@ -96,6 +100,7 @@ export function JobDetailScreen({ jobId }: { jobId: number }) {
             <Button
               variant="outline"
               size="sm"
+              nativeButton={false}
               render={<Link href={`${ROUTES.places}?job_id=${job.id}`} />}
             >
               <ExternalLinkIcon />
@@ -152,12 +157,27 @@ export function JobDetailScreen({ jobId }: { jobId: number }) {
       </Card>
 
       <Card size="sm" className="gap-0 py-0">
-        <div className="border-b p-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b p-3">
           <p className="font-heading text-sm font-medium">
             Truy vấn con ({formatNumber(job.queries.length)})
           </p>
+          {/*
+           * Tổng theo lý do dừng. Với job quét cả nước (34 dòng) hay tới phường/xã
+           * (3.321 dòng) thì đây là chỗ duy nhất nhìn ra còn bao nhiêu địa bàn
+           * chưa lấy hết — dò tay từng dòng là không khả thi.
+           */}
+          {tallyStopReasons(job.queries).map(({ reason, count, meta }) => (
+            <Badge
+              key={reason}
+              variant="secondary"
+              className={cn("font-normal", meta.className)}
+              title={meta.hint}
+            >
+              {meta.label}: {formatNumber(count)}
+            </Badge>
+          ))}
         </div>
-        <JobQueriesTable queries={job.queries} />
+        <JobQueriesTable jobId={job.id} queries={job.queries} />
       </Card>
     </div>
   );

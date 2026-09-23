@@ -55,9 +55,20 @@ export function JobsTable({ jobs }: { jobs: Job[] }) {
         {jobs.map((job) => (
           <TableRow key={job.id}>
             <TableCell className="max-w-64 pl-4">
+              {/*
+                * `block truncate` là BẮT BUỘC, không phải để cho đẹp.
+                * TableCell mang sẵn `whitespace-nowrap`, mà `max-w-64` một mình
+                * KHÔNG cắt gì cả — nó chỉ giới hạn bề rộng ô, chữ vẫn tràn ra
+                * ngoài và VẼ ĐÈ lên cột bên cạnh. Trên màn hình hẹp, tên job dài
+                * nằm chồng lên huy hiệu trạng thái, đọc không ra chữ nào.
+                * `truncate` kéo theo `overflow:hidden` nên chữ mới bị cắt thật.
+                * Dòng từ khoá bên dưới đã có sẵn truncate, nên trước giờ chỉ
+                * mỗi dòng tên bị lỗi.
+                */}
               <Link
                 href={ROUTES.jobDetail(job.id)}
-                className="font-medium hover:underline"
+                title={job.name}
+                className="block truncate font-medium hover:underline"
               >
                 {job.name}
               </Link>
