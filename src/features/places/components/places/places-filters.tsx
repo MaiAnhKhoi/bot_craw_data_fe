@@ -27,12 +27,17 @@ import {
   type ComboboxOption,
 } from "@/features/geo/components/searchable-combobox";
 import {
+  CONTACT_STATUS_META,
+  CONTACT_STATUS_ORDER,
+} from "@/features/places/lib/contact";
+import {
   BUSINESS_STATUS_LABEL,
   LIVENESS_META,
   LIVENESS_ORDER,
 } from "@/features/places/lib/liveness";
 import type {
   BusinessStatus,
+  ContactStatus,
   LivenessLabel,
   PlaceFilters,
 } from "@/features/places/types/place";
@@ -116,6 +121,12 @@ const BUSINESS_STATUS_OPTIONS: Option[] = (
   Object.keys(BUSINESS_STATUS_LABEL) as BusinessStatus[]
 ).map((status) => ({ value: status, label: BUSINESS_STATUS_LABEL[status] }));
 
+/* Cùng một bảng hằng với cột "Chăm sóc" — ô lọc và huy hiệu không thể lệch chữ. */
+const CONTACT_STATUS_OPTIONS: Option[] = CONTACT_STATUS_ORDER.map((status) => ({
+  value: status,
+  label: CONTACT_STATUS_META[status].label,
+}));
+
 /*
  * Mục "Mọi quốc gia" ghim đầu danh sách. Mượn luôn sentinel `ALL` của các ô lọc
  * khác — mã ISO alpha-2 luôn viết hoa nên không đời nào đụng chuỗi "all".
@@ -136,6 +147,7 @@ const QUERY_SPECIALS: ComboboxOption[] = [
  */
 function countActiveFilters(filters: PlaceFilters): number {
   return [
+    filters.contact_status !== undefined ? 1 : 0,
     filters.liveness?.length ? 1 : 0,
     filters.has_phone !== undefined ? 1 : 0,
     filters.has_website !== undefined ? 1 : 0,
@@ -239,6 +251,26 @@ export function PlacesFilters({
           open ? "flex" : "hidden",
         )}
       >
+      {/*
+        * Đứng ĐẦU hàng lọc, trước cả "Tình trạng": đây là ô được dùng nhiều nhất
+        * trong ngày làm việc thật — mở máy lên, chọn "Chưa liên hệ", gọi từ trên
+        * xuống. Xếp nó lẫn vào giữa đám lọc kỹ thuật là bắt người ta đi tìm mỗi
+        * sáng, mà trên mobile thì nó còn nằm sau một nút gập nữa.
+        */}
+      <FilterSelect
+        label="Mọi trạng thái chăm sóc"
+        className="w-52"
+        value={filters.contact_status ?? ALL}
+        options={CONTACT_STATUS_OPTIONS}
+        onChange={(value) =>
+          onChange({
+            ...filters,
+            contact_status:
+              value === ALL ? undefined : (value as ContactStatus),
+          })
+        }
+      />
+
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
           Tình trạng

@@ -9,6 +9,7 @@ import {
   BUSINESS_STATUS_LABEL,
   WEBSITE_STATUS_META,
 } from "@/features/places/lib/liveness";
+import { ContactCell } from "@/features/places/components/places/contact-cell";
 import { LivenessCell } from "@/features/places/components/places/liveness-cell";
 import { PlaceActionsCell } from "@/features/places/components/places/place-actions-cell";
 import type { Place } from "@/features/places/types/place";
@@ -40,6 +41,7 @@ export const PLACE_COLUMN_LABELS: Record<string, string> = {
   phone: "SĐT",
   website: "Website",
   liveness: "Tình trạng",
+  contact: "Chăm sóc",
   category: "Danh mục",
   rating: "Đánh giá",
   review_count: "Lượt đánh giá",
@@ -84,7 +86,18 @@ export const placeColumns: ColumnDef<Place>[] = [
     header: PLACE_COLUMN_LABELS.address,
     cell: ({ row }) => {
       const place = row.original;
-      if (!place.address) {
+      /*
+       * Ba trạng thái KHÁC NHAU, và phải hiện khác nhau — gộp lại chính là gốc
+       * của chuyện "ô địa chỉ lúc rỗng lúc hiện không đầy đủ":
+       *   1. có địa chỉ đầy đủ  -> hiện bình thường
+       *   2. chỉ có mẩu từ thẻ  -> hiện mẩu đó, NHƯNG nói rõ là chưa đầy đủ
+       *   3. chưa có gì         -> gạch ngang
+       * Đo thật trên 2.526 dòng chưa mở trang chi tiết: 39% rơi vào ca 3, phần
+       * còn lại là ca 2 với độ dài trung bình 20 ký tự ("Phan Huy Ích").
+       */
+      const dayDu = place.address;
+      const hienThi = dayDu ?? place.address_short;
+      if (!hienThi) {
         return <span className="text-muted-foreground">{DASH}</span>;
       }
       /*
@@ -109,12 +122,25 @@ export const placeColumns: ColumnDef<Place>[] = [
         <div className="relative w-80 pe-6">
           <span
             className="line-clamp-2 whitespace-normal text-muted-foreground"
-            title={place.address}
+            title={
+              dayDu
+                ? dayDu
+                : `${hienThi} — địa chỉ rút gọn từ thẻ kết quả, chưa đầy đủ. Mở trang chi tiết (chạy lại job với "Chỉ khi thiếu dữ liệu") để lấy địa chỉ đầy đủ.`
+            }
           >
-            {place.address}
+            {hienThi}
+            {/*
+              * Nhãn này BẮT BUỘC phải có. Không có nó thì "Phan Huy Ích" trông
+              * y hệt một địa chỉ thật, và người dùng gửi thư tới đó.
+              */}
+            {!dayDu ? (
+              <span className="ms-1 text-xs whitespace-nowrap text-amber-600 dark:text-amber-400">
+                (chưa đầy đủ)
+              </span>
+            ) : null}
           </span>
           <CopyButton
-            value={place.address}
+            value={hienThi}
             label={`Sao chép địa chỉ của ${place.name}`}
             className="absolute end-0 top-0"
           />
@@ -243,6 +269,20 @@ export const placeColumns: ColumnDef<Place>[] = [
     accessorKey: "liveness_score",
     header: PLACE_COLUMN_LABELS.liveness,
     cell: ({ row }) => <LivenessCell place={row.original} />,
+  },
+  {
+    /*
+     * Đặt ngay sau "Tình trạng" để hai cột trạng thái đứng cạnh nhau, và để bốn
+     * cột đầu vẫn nguyên là bốn trường bắt buộc theo yêu cầu nghiệp vụ.
+     *
+     * KHÔNG nằm trong `SORTABLE_COLUMN_IDS`: backend không có khoá sort cho
+     * `contact_status`. Muốn xem riêng nhóm nào thì dùng ô lọc "Mọi trạng thái
+     * chăm sóc" — nó lọc trên TOÀN BỘ tập dữ liệu chứ không chỉ trang đang xem.
+     */
+    id: "contact",
+    accessorKey: "contact_status",
+    header: PLACE_COLUMN_LABELS.contact,
+    cell: ({ row }) => <ContactCell place={row.original} />,
   },
   {
     id: "category",
