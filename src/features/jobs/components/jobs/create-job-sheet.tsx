@@ -33,11 +33,13 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { LocationPicker } from "@/features/geo/components/location-picker";
 import { KeywordLocalizer } from "@/features/keyword/components/keyword-localizer";
+import { KeywordSetPicker } from "@/features/keyword/components/keyword-set-picker";
 import { useLocationCountries } from "@/features/keyword/hooks/use-location-countries";
 import {
   buildKeywordMap,
   countQueries,
 } from "@/features/keyword/lib/keyword-map";
+import { keywordsToText } from "@/features/keyword/lib/keyword-sets";
 import { useCreateJob } from "@/features/jobs/hooks/use-job-mutations";
 import { DETAIL_MODE_OPTIONS } from "@/features/jobs/lib/job-status";
 import { mergeLocationLines } from "@/features/jobs/lib/locations-text";
@@ -154,6 +156,19 @@ export function CreateJobSheet() {
     form.setValue("locations", "", { shouldDirty: true });
   };
 
+  /*
+   * Chọn một bộ đã lưu là THAY hẳn nội dung ô từ khoá, không nối thêm: bộ nhớ
+   * đệm bản dịch khoá theo đúng bộ từ khoá, nối thêm một dòng là thành bộ thứ
+   * ba chưa từng được dịch. `shouldValidate` để lỗi "Nhập ít nhất một từ khoá"
+   * biến mất ngay khi ô vừa được điền.
+   */
+  const handleApplyKeywordSet = (next: string[]) => {
+    form.setValue("keywords", keywordsToText(next), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
   const onSubmit = form.handleSubmit((input) => {
     createJob.mutate(toJobCreate(input, keywordMap), {
       onSuccess: () => handleOpenChange(false),
@@ -229,6 +244,17 @@ export function CreateJobSheet() {
                   />
                   <FieldError message={errors.keywords?.message} />
                 </div>
+
+                {/*
+                 * Gọi lại một bộ từ khoá cũ. Đặt ngay dưới ô từ khoá vì nó ghi
+                 * thẳng vào ô đó — và vì bộ nhớ đệm bản dịch của backend khoá
+                 * theo ĐÚNG bộ từ khoá: gõ lại tay sai một chữ là AI phải dịch
+                 * lại từ đầu cho mọi nước.
+                 */}
+                <KeywordSetPicker
+                  keywords={keywords}
+                  onApply={handleApplyKeywordSet}
+                />
 
                 <div className="space-y-1.5">
                   <Label>Chế độ lấy chi tiết</Label>

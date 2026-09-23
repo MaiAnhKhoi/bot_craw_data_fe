@@ -83,3 +83,36 @@ export interface SaveRequest {
 export interface SaveResponse {
   saved: true;
 }
+
+/*
+ * Bộ từ khoá đã lưu — lối tắt để GỌI LẠI ĐÚNG một bộ từ khoá cũ.
+ *
+ * Vì sao cần lưu cả bộ thay vì để người dùng gõ lại: bộ nhớ đệm bản dịch của
+ * backend khoá theo (bộ từ khoá gốc, quốc gia). Khoá đó bền với đảo thứ tự,
+ * khác hoa/thường và khoảng trắng thừa — nhưng THIẾU MỘT TỪ hay SAI MỘT CHỮ là
+ * một bộ khác hẳn, và AI bị gọi lại từ đầu cho MỌI nước. Nhớ bằng đầu rồi gõ
+ * tay là cách chắc chắn nhất để trả tiền hai lần cho cùng một bản dịch.
+ */
+export interface KeywordSet {
+  id: number;
+  name: string;
+  keywords: string[];
+  /**
+   * Mã ISO alpha-2 các nước ĐÃ có bản dịch sẵn cho bộ này. Chọn nước nằm trong
+   * danh sách này thì lượt gợi ý lấy từ bộ nhớ đệm, không tốn lượt gọi AI —
+   * đây là con số duy nhất khiến tính năng này đáng tồn tại.
+   */
+  translated_countries: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+/** Backend GHI ĐÈ theo `name` (không phân biệt hoa thường), không tạo bản trùng tên. */
+export interface KeywordSetCreate {
+  name: string;
+  keywords: string[];
+}
+
+export interface KeywordSetDeleted {
+  deleted: true;
+}
