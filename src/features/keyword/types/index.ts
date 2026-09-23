@@ -42,6 +42,29 @@ export interface LocalizeRequest {
   countries?: string[];
 }
 
+/*
+ * Xem trước một lượt dịch — `/keywords/plan`. KHÔNG gọi AI, chỉ đếm và tra bộ
+ * nhớ đệm, nên gọi thoải mái để chặn người dùng TRƯỚC khi họ bấm nút.
+ *
+ * Trần tính trên `need`, không phải `total`: 60 nước mà 40 nước đã có bản dịch
+ * lưu sẵn thì chỉ còn 20 nước cần gọi AI — chặn ở 60 là chặn oan.
+ */
+export interface PlanResponse {
+  /** Tổng số quốc gia nhận ra trong danh sách địa điểm. */
+  total: number;
+  /** Việt Nam — dùng thẳng từ khoá gốc, không cần dịch. */
+  home: string[];
+  /** Đã có bản dịch lưu sẵn, không tốn lượt gọi AI. */
+  cached: string[];
+  /** Thật sự cần gọi AI lần này. */
+  need: string[];
+  /** Trần số quốc gia cho MỘT lượt gọi (backend: BCD_AI_MAX_COUNTRIES). */
+  limit: number;
+  /** `need.length > limit` -> phải bớt địa điểm đi. */
+  over_limit: boolean;
+  ai_available: boolean;
+}
+
 export interface LocalizeResponse {
   items: CountryKeywords[];
   ai_available: boolean;

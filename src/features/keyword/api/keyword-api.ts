@@ -3,6 +3,7 @@ import type {
   AiStatus,
   LocalizeRequest,
   LocalizeResponse,
+  PlanResponse,
   SaveRequest,
   SaveResponse,
 } from "@/features/keyword/types";
@@ -21,6 +22,21 @@ import type {
 
 export async function getAiStatus(signal?: AbortSignal): Promise<AiStatus> {
   const response = await api.get<AiStatus>("/keywords/status", { signal });
+  return response.data;
+}
+
+/*
+ * Xem trước lượt dịch. Ngược hẳn với `/localize`: endpoint này KHÔNG chạm tới AI
+ * (chỉ đếm quốc gia và tra bộ nhớ đệm) nên gọi lại thoải mái, và vì thế nó được
+ * bọc trong `useQuery` chứ không phải mutation.
+ */
+export async function planKeywords(
+  request: LocalizeRequest,
+  signal?: AbortSignal,
+): Promise<PlanResponse> {
+  const response = await api.post<PlanResponse>("/keywords/plan", request, {
+    signal,
+  });
   return response.data;
 }
 

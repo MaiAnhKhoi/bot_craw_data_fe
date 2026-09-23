@@ -302,6 +302,29 @@ export function CreateJobSheet() {
 
                 <Controller
                   control={form.control}
+                  name="skip_recent_queries"
+                  render={({ field }) => (
+                    <label className="flex items-center justify-between gap-4 rounded-lg border p-3 text-sm">
+                      <span>
+                        Bỏ qua địa bàn vừa quét
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          Truy vấn đã chạy xong trong số ngày ở trên sẽ không mở
+                          lại. Đây là chỗ tiết kiệm lớn nhất khi quét lại diện
+                          rộng: mỗi truy vấn bỏ qua là 1-3 phút cuộn danh sách
+                          để rồi thấy toàn địa điểm đã có.
+                        </span>
+                      </span>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        onBlur={field.onBlur}
+                      />
+                    </label>
+                  )}
+                />
+
+                <Controller
+                  control={form.control}
                   name="enrich_website"
                   render={({ field }) => (
                     <label className="flex items-center justify-between gap-4 rounded-lg border p-3 text-sm">

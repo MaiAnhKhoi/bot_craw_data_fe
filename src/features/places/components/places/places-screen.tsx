@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { ArrowLeftIcon } from "lucide-react";
 import { MapPinnedIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import {
@@ -17,7 +19,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import { PaginationBar } from "@/components/shared/pagination-bar";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
+import { Button } from "@/components/ui/button";
+import { DEFAULT_PAGE_SIZE, ROUTES } from "@/lib/constants";
 import { formatNumber } from "@/lib/format";
 import { ColumnVisibilityMenu } from "@/features/places/components/places/column-visibility-menu";
 import { ExportButton } from "@/features/places/components/places/export-button";
@@ -28,9 +31,14 @@ import {
 import { PlacesFilters } from "@/features/places/components/places/places-filters";
 import { PlacesTable } from "@/features/places/components/places/places-table";
 import { useColumnVisibility } from "@/features/places/hooks/use-column-visibility";
-import { usePlaces } from "@/features/places/hooks/use-places";
+import { usePlaceEvents } from "@/features/places/hooks/use-place-events";
+import {
+  usePlaceCountries,
+  usePlaceQueries,
+  usePlaces,
+} from "@/features/places/hooks/use-places";
 import { useJobs } from "@/features/jobs/hooks/use-jobs";
-import { useOverview } from "@/features/stats/hooks/use-overview";
+import type { ComboboxOption } from "@/features/geo/components/searchable-combobox";
 import type { PlaceFilters, PlaceSort } from "@/features/places/types/place";
 
 /*
@@ -103,7 +111,15 @@ export function PlacesScreen() {
 
   /* Nguồn dữ liệu cho hai ô lọc — xem ghi chú phụ thuộc chéo ở đầu file. */
   const { data: jobsPage } = useJobs({ page: 1, size: 100 });
-  const { data: overview } = useOverview();
+
+  /* Ô lọc quốc gia thì ngược lại: endpoint riêng của chính module Địa điểm. */
+  const { data: countries, isPending: countriesPending } = usePlaceCountries();
+
+  /*
+   * Theo dõi dữ liệu mới theo thời gian thực. Không nhận giá trị trả về:
+   * hook tự gọi invalidate, `usePlaces` ở trên nạp lại và bảng tự vẽ lại.
+   */
+  usePlaceEvents();
 
   const jobOptions = useMemo(
     () =>
@@ -114,13 +130,38 @@ export function PlacesScreen() {
     [jobsPage],
   );
 
-  const keywordOptions = useMemo(
+  /*
+   * Danh sách LƯỢT TÌM lấy từ endpoint riêng, KHÔNG dùng `overview.top_keywords`
+   * như trước: cái đó có LIMIT 10 ở backend, nên quét từ địa bàn thứ 11 trở đi là
+   * những lượt tìm đó biến mất khỏi ô lọc mà không có cảnh báo nào — người dùng
+   * tưởng dữ liệu bị gộp chung không tách ra được.
+   */
+  const { data: placeQueries, isPending: queriesPending } = usePlaceQueries();
+  const queryOptions = useMemo(
     () =>
-      (overview?.top_keywords ?? []).map((row) => ({
-        value: row.keyword,
-        label: row.keyword,
+      (placeQueries ?? []).map((row) => ({
+        value: row.query,
+        label: `${row.query} (${formatNumber(row.count)})`,
+        searchText: row.query,
       })),
-    [overview],
+    [placeQueries],
+  );
+
+  /*
+   * Số lượng nằm ngay trong nhãn ("Thái Lan (6)") để người dùng biết chọn nước
+   * nào là bõ công trước khi bảng tải lại.
+   *
+   * `searchText` là mã ISO: người quen việc gõ "TH" nhanh hơn gõ "Thái Lan",
+   * còn tên có dấu thì combobox đã tự gấp dấu khi so khớp.
+   */
+  const countryOptions = useMemo<ComboboxOption[]>(
+    () =>
+      (countries ?? []).map((country) => ({
+        value: country.code,
+        label: `${country.name} (${formatNumber(country.count)})`,
+        searchText: country.code,
+      })),
+    [countries],
   );
 
   const handleFiltersChange = (next: PlaceFilters) => {
@@ -134,8 +175,40 @@ export function PlacesScreen() {
     setPage(1);
   };
 
+  /*
+   * Job mà bảng đang bị lọc theo. Dựa vào BỘ LỌC HIỆN TẠI chứ không phải query
+   * string lúc vào trang: người dùng tới đây từ nút "Xem địa điểm của job" thì
+   * hai thứ trùng nhau, nhưng nếu họ tự chọn job trong ô lọc thì chỉ bộ lọc là
+   * đúng. Nhờ vậy đường quay lại luôn khớp với thứ đang nhìn thấy.
+   */
+  const jobDangLoc = useMemo(
+    () =>
+      filters.job_id === undefined
+        ? null
+        : (jobsPage?.items ?? []).find((job) => job.id === filters.job_id),
+    [filters.job_id, jobsPage],
+  );
+
   return (
     <div className="space-y-4">
+      {/*
+        * Đường quay lại job. Thiếu nó thì vào từ màn chi tiết job là cụt đường:
+        * bảng hiện ra nhưng không còn lối nào về job vừa xem, phải bấm nút Back
+        * của trình duyệt hoặc đi vòng qua menu rồi tìm lại job đó.
+        */}
+      {filters.job_id !== undefined ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2 text-muted-foreground"
+          nativeButton={false}
+          render={<Link href={ROUTES.jobDetail(filters.job_id)} />}
+        >
+          <ArrowLeftIcon />
+          {jobDangLoc ? `Về job "${jobDangLoc.name}"` : "Về job"}
+        </Button>
+      ) : null}
+
       <PageHeader
         title="Địa điểm"
         description="Toàn bộ lead đã thu thập: tên công ty, vị trí, số điện thoại, website."
@@ -161,7 +234,10 @@ export function PlacesScreen() {
           onChange={handleFiltersChange}
           onReset={handleReset}
           jobOptions={jobOptions}
-          keywordOptions={keywordOptions}
+          queryOptions={queryOptions}
+          queriesLoading={queriesPending}
+          countryOptions={countryOptions}
+          countriesLoading={countriesPending}
         />
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 text-sm text-muted-foreground">

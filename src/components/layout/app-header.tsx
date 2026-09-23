@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LogOutIcon, UserIcon } from "lucide-react";
+import { LogOutIcon, RadarIcon, UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,47 +12,44 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { NAV_ITEMS, isNavItemActive } from "@/components/layout/nav-items";
+import { MobileNav } from "@/components/layout/mobile-nav";
+import { ROUTES } from "@/lib/constants";
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 import { useLogout } from "@/features/auth/hooks/use-logout";
 import { WorkerStatusBadge } from "@/features/stats/components/worker/worker-status-badge";
-import { cn } from "@/lib/utils";
 
 /*
- * Header của khung dashboard: điều hướng rút gọn (chỉ hiện dưới lg, nơi sidebar
- * đã ẩn), huy hiệu worker và menu tài khoản.
+ * Header của khung dashboard.
+ *
+ * Dưới `lg` (sidebar đã ẩn): nút ba gạch mở ngăn kéo + tên ứng dụng.
+ * Từ `lg` trở lên: sidebar lo phần điều hướng, header chỉ còn worker + tài khoản.
+ *
+ * Trước đây dưới `lg` header nhồi cả ba mục menu thành một hàng ngang. Ở bề
+ * ngang 375px chúng chiếm gần hết chỗ, đẩy huy hiệu worker và nút tài khoản ra
+ * sát mép và tạo thêm một vùng cuộn ngang thứ hai bên cạnh vùng cuộn của bảng.
  */
 export function AppHeader() {
-  const pathname = usePathname();
   const { data: user } = useCurrentUser();
   const logout = useLogout();
 
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-backdrop-filter:bg-background/80 lg:px-6">
-      <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto lg:hidden">
-        {NAV_ITEMS.map((item) => {
-          const active = isNavItemActive(item.href, pathname);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
-                active
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-muted",
-              )}
-            >
-              <Icon className="size-4" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+      <MobileNav />
 
-      <div className="hidden flex-1 lg:block" />
+      {/* Tên ứng dụng chỉ hiện dưới lg — từ lg trở lên nó đã có trên sidebar. */}
+      <Link
+        href={ROUTES.dashboard}
+        className="flex min-w-0 items-center gap-2 lg:hidden"
+      >
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <RadarIcon className="size-4" />
+        </span>
+        <span className="truncate font-heading text-sm font-semibold">
+          Bot Craw Data
+        </span>
+      </Link>
+
+      <div className="flex-1" />
 
       <WorkerStatusBadge />
 

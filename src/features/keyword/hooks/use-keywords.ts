@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   getAiStatus,
   localizeKeywords,
+  planKeywords,
   saveKeywords,
 } from "@/features/keyword/api/keyword-api";
 import { STALE_TIME } from "@/lib/constants";
@@ -24,6 +25,7 @@ import { STALE_TIME } from "@/lib/constants";
 export const keywordKeys = {
   all: ["keywords"] as const,
   status: () => ["keywords", "status"] as const,
+  plan: (signature: string) => ["keywords", "plan", signature] as const,
 };
 
 /*
@@ -37,6 +39,27 @@ export function useAiStatus(enabled = true) {
   return useQuery({
     queryKey: keywordKeys.status(),
     queryFn: ({ signal }) => getAiStatus(signal),
+    enabled,
+    staleTime: STALE_TIME.keywords,
+  });
+}
+
+/*
+ * Xem trước lượt dịch. Đây LÀ query (khác hẳn `useLocalizeKeywords` ở dưới) vì
+ * `/keywords/plan` không gọi AI — nó chỉ đếm quốc gia và tra bộ nhớ đệm, nên
+ * chạy lại không tốn gì. Nhờ vậy giao diện biết trước "lượt này cần bao nhiêu
+ * nước" và chặn được ngay tại chỗ, thay vì để người dùng bấm nút rồi mới báo.
+ *
+ * `signature` phải do nơi gọi DEBOUNCE trước: từ khoá đổi theo từng phím gõ.
+ */
+export function useKeywordPlan(
+  request: { keywords: string[]; locations: string[] },
+  signature: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: keywordKeys.plan(signature),
+    queryFn: ({ signal }) => planKeywords(request, signal),
     enabled,
     staleTime: STALE_TIME.keywords,
   });

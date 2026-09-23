@@ -33,6 +33,7 @@ export interface JobCreate {
   detail_mode?: DetailMode;
   enrich_website?: boolean;
   ttl_days?: number;
+  skip_recent_queries?: boolean;
 }
 
 export interface Job {
@@ -63,11 +64,27 @@ export type JobQueryStatus =
   | "failed"
   | "skipped";
 
+/*
+ * Vì sao vòng cuộn danh sách kết quả dừng lại. Đây mới là thứ trả lời được
+ * "địa bàn này đã quét hết chưa?" — `results_found` một mình thì không:
+ * 95 kết quả kèm `exhausted` là xong, 95 kết quả kèm `cut_off` là còn sót.
+ */
+export type JobQueryStopReason =
+  | "exhausted"
+  | "cut_off"
+  | "cap"
+  | "empty"
+  | "unknown"
+  /* Không phải lý do của vòng cuộn: truy vấn chưa hề chạy, bị bỏ qua vì chính
+     nó đã chạy xong trong `ttl_days` ngày gần đây. */
+  | "recent";
+
 export interface JobQuery {
   id: number;
   query: string;
   status: JobQueryStatus;
   results_found: number | null;
+  stop_reason: JobQueryStopReason | null;
   error: string | null;
 }
 
