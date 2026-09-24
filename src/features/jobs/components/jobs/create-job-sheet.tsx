@@ -36,6 +36,7 @@ import { KeywordLocalizer } from "@/features/keyword/components/keyword-localize
 import { KeywordSetPicker } from "@/features/keyword/components/keyword-set-picker";
 import { useLocationCountries } from "@/features/keyword/hooks/use-location-countries";
 import {
+  buildCategoryMap,
   buildKeywordMap,
   countQueries,
 } from "@/features/keyword/lib/keyword-map";
@@ -119,6 +120,17 @@ export function CreateJobSheet() {
    */
   const { codeByLocation } = useLocationCountries(locations);
   const keywordMap = useMemo(() => buildKeywordMap(keywordItems), [keywordItems]);
+  /*
+   * Danh mục ngành nghề theo quốc gia, do bước gợi ý từ khoá bản địa sinh ra.
+   *
+   * Hạ tầng NGẦM: không hiện ra ô nào trong form, người dùng chỉ gõ từ khoá.
+   * Nước nào vắng mặt trong map thì job không lọc ngành nghề ở nước đó — kết
+   * quả vẫn được ghi đủ, chỉ là lẫn nhiều hơn.
+   */
+  const categoryMap = useMemo(
+    () => buildCategoryMap(keywordItems),
+    [keywordItems],
+  );
   const hasKeywordMap = Object.keys(keywordMap).length > 0;
   const queryCount = useMemo(
     () => countQueries(codeByLocation, keywordCount, keywordMap),
@@ -170,7 +182,7 @@ export function CreateJobSheet() {
   };
 
   const onSubmit = form.handleSubmit((input) => {
-    createJob.mutate(toJobCreate(input, keywordMap), {
+    createJob.mutate(toJobCreate(input, keywordMap, categoryMap), {
       onSuccess: () => handleOpenChange(false),
     });
   });

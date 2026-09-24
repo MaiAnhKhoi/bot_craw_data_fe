@@ -218,8 +218,17 @@ export function PlacesScreen() {
               visibility={columnVisibility}
               onChange={setColumnVisibility}
             />
+            {/*
+              * Nút xuất nhận CÙNG state cột với `ColumnVisibilityMenu` ở trên,
+              * nhờ vậy lựa chọn "chỉ xuất các cột đang hiện" đọc đúng thứ người
+              * dùng vừa tắt. Luồn qua props chứ không để ExportButton tự gọi
+              * `useColumnVisibility`: hook đó giữ state riêng, hai bản sao sẽ
+              * lệch nhau ngay lần tắt cột đầu tiên và file xuất ra một đằng,
+              * bảng hiện một nẻo.
+              */}
             <ExportButton
               filters={appliedFilters}
+              columnVisibility={columnVisibility}
               disabled={!data || data.total === 0}
             />
           </>

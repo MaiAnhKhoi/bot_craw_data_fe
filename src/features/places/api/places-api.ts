@@ -88,13 +88,28 @@ export async function setPlaceContact(
  * query param giống endpoint SSE — same-origin qua rewrite của Next.
  * Nếu backend không chấp nhận token ở query cho endpoint này, đổi sang tạo link
  * tải một lần (signed URL) là cách sạch hơn cả — ghi rõ trong README.
+ *
+ * `columns` = danh sách khoá cột muốn có trong file, GHÉP BẰNG DẤU PHẨY thành
+ * một tham số duy nhất (`?columns=name,phone`) đúng theo hợp đồng API. Cố ý
+ * không đưa thẳng mảng cho `buildApiUrl`: bộ serialize của dự án LẶP KEY cho
+ * mảng (`?columns=name&columns=phone`) — đúng với `liveness`, nhưng endpoint
+ * này chỉ đọc MỘT chuỗi nên lặp key là lặng lẽ mất hết cột trừ cột cuối.
+ *
+ * Bỏ trống (hoặc mảng rỗng) = xuất ĐỦ 23 cột. Server không bao giờ trả file
+ * trống, nên chỗ gọi đừng hiểu mảng rỗng là "không xuất cột nào".
  */
 export function placesExportUrl(
   filters: PlaceFilters,
   format: ExportFormat,
   token: string,
+  columns?: string[],
 ): string {
-  return buildApiUrl("/places/export", { ...filters, format, token });
+  return buildApiUrl("/places/export", {
+    ...filters,
+    format,
+    token,
+    columns: columns?.length ? columns.join(",") : undefined,
+  });
 }
 
 /*

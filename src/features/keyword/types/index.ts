@@ -28,6 +28,20 @@ export interface CountryKeywords {
   language: string;
   keywords: string[];
   source: KeywordSource;
+  /*
+   * DANH MỤC NGÀNH NGHỀ được phép của quốc gia này — tên ngành nghề Google Maps
+   * (có cả bản ngữ lẫn tiếng Anh). Cũng là khoá của `category_map` gửi lên /jobs.
+   *
+   * Vì sao cần: Google Maps KHÔNG BAO GIỜ trả danh sách ngắn — hết kết quả khớp
+   * thật nó độn thêm thứ loãng dần ở gần đó. Đo thật trên job "Công ty trái cây"
+   * quét quần đảo Andaman: độ đúng ngành tụt từ 90% (vị trí 1-20) xuống 11%
+   * (vị trí 101-118) — tiệm bánh kem, hiệu sách, đại lý du lịch. Địa điểm có
+   * ngành nghề ngoài danh mục này bị LOẠI NGAY lúc quét, không ghi vào bảng.
+   *
+   * RỖNG nghĩa là KHÔNG LỌC GÌ CẢ, không phải "loại tất" — mọi thứ Google trả
+   * về đều được ghi.
+   */
+  categories: string[];
 }
 
 export interface AiStatus {
@@ -78,6 +92,11 @@ export interface SaveRequest {
   country_code: string;
   language: string;
   translated: string[];
+  /*
+   * Danh mục ngành nghề người dùng đã duyệt. Lưu CÙNG một lượt với từ khoá vì
+   * backend ghi đè cả bản ghi: gửi thiếu trường này là xoá sạch danh mục đã sửa.
+   */
+  categories: string[];
 }
 
 export interface SaveResponse {

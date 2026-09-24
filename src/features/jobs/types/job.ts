@@ -1,8 +1,9 @@
-import type { JobPhase } from "@/types/domain";
+import type { PageParams } from "@/types/common";
+import type { JobPhase, RelevanceSource } from "@/types/domain";
 
 /* Kiểu của module Jobs — khớp docs/API_CONTRACT.md §2. */
 
-export type { JobPhase };
+export type { JobPhase, RelevanceSource };
 
 export type JobStatus =
   | "queued"
@@ -26,6 +27,20 @@ export interface JobCreate {
    * nước nào không khai thì vẫn dùng `keywords` chung.
    */
   keyword_map?: Record<string, string[]>;
+  /*
+   * DANH MỤC NGÀNH NGHỀ được phép, theo mã quốc gia — cùng cấu trúc `keyword_map`,
+   * vd `{"IN": ["Fruit and vegetable wholesaler", "Produce market"]}`.
+   *
+   * Địa điểm có ngành nghề NGOÀI danh mục của nước nó thuộc về bị loại ngay lúc
+   * quét, không ghi vào bảng (vẫn ghi riêng để soi — xem `rejected_count`).
+   * Nước nào KHÔNG có mặt ở đây thì không lọc gì cả, mọi kết quả Google trả về
+   * đều được ghi.
+   *
+   * Người dùng KHÔNG nhìn thấy và không sửa được danh mục này — nó do bước gợi
+   * ý từ khoá bản địa sinh ra rồi gửi thẳng lên. Nhưng vẫn phải gửi: bỏ trường
+   * này đi là tắt luôn bộ lọc ở backend.
+   */
+  category_map?: Record<string, string[]>;
   hl?: string;
   gl?: string;
   region?: string;
@@ -49,6 +64,15 @@ export interface Job {
   failed_places: number;
   new_places: number;
   blocked_count: number;
+  /*
+   * Số địa điểm bị LOẠI vì ngành nghề nằm ngoài `category_map`. Khác hẳn
+   * `failed_places` (lỗi khi quét) và `blocked_count` (Google chặn): đây là
+   * những dòng bộ lọc cố tình bỏ đi.
+   *
+   * KHÔNG hiện ra màn hình nào — bộ lọc là hạ tầng ngầm. Giữ khai báo để khi
+   * nghi bộ lọc siết quá tay thì còn con số mà đọc trong payload.
+   */
+  rejected_count: number;
   rate_per_min: number | null;
   started_at: string | null;
   finished_at: string | null;
@@ -97,6 +121,37 @@ export interface JobListParams {
   size?: number;
   status?: JobStatus;
 }
+
+/*
+ * Một địa điểm đã BỊ LOẠI vì ngành nghề ngoài danh mục (`GET /jobs/{id}/rejects`).
+ *
+ * Cố ý nhẹ hơn `Place`: những dòng này không được ghi vào bảng địa điểm nên
+ * không có điểm sống/chết, không có số điện thoại, không có gì để chăm sóc.
+ *
+ * KHÔNG màn hình nào gọi endpoint này nữa — bộ lọc ngành nghề là hạ tầng ngầm.
+ * Giữ khai báo vì backend vẫn phục vụ nó và đây là đường duy nhất soi được
+ * những dòng bộ lọc đã vứt, khi nghi nó siết quá tay.
+ */
+export interface JobReject {
+  id: number;
+  /** Cả chuỗi truy vấn đã tìm ra nó, vd "fruit wholesaler Port Blair, India". */
+  query: string;
+  name: string;
+  /** Ngành nghề Google gắn cho nó — chính là lý do bị loại. */
+  category: string | null;
+  /**
+   * AI hay luật cứng đã loại dòng này (xem `RelevanceSource`). Đáng đọc khi đi
+   * truy: bị luật cứng loại thì chữa bằng cách nới danh mục ngành nghề, còn bị
+   * AI loại thì danh mục không liên quan — hai cách chữa khác hẳn nhau.
+   */
+  source: RelevanceSource | null;
+  /** Câu giải thích của AI. Chỉ có khi `source === "ai"`. */
+  reason: string | null;
+  maps_url: string | null;
+  created_at: string;
+}
+
+export type JobRejectListParams = PageParams;
 
 /*
  * Payload của sự kiện SSE `event: progress` — CHỈ là phần tiến độ của Job,

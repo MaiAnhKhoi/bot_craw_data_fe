@@ -3,9 +3,10 @@ import type { CountryKeywords } from "@/features/keyword/types";
 /*
  * Phép tính THUẦN của module Từ khoá bản địa (không React, không API).
  *
- * Hai việc duy nhất ở đây:
+ * Ba việc duy nhất ở đây:
  *  1. Đổi danh sách gợi ý theo quốc gia thành `keyword_map` gửi lên `/jobs`.
- *  2. Đếm số truy vấn THẬT khi mỗi quốc gia có bộ từ khoá riêng — người dùng
+ *  2. Đổi danh mục ngành nghề đã duyệt thành `category_map` gửi cùng chỗ.
+ *  3. Đếm số truy vấn THẬT khi mỗi quốc gia có bộ từ khoá riêng — người dùng
  *     phải thấy trước khối lượng công việc mình đặt ra, không chỉ phép nhân
  *     "từ khoá × địa điểm" như lúc chưa có bản địa hoá.
  */
@@ -49,6 +50,39 @@ export function buildKeywordMap(
     const keywords = normalizeKeywords(item.keywords);
     if (keywords.length === 0) continue;
     map[item.country_code.toUpperCase()] = keywords;
+  }
+  return map;
+}
+
+/*
+ * Nhãn ngành nghề chuẩn hoá y hệt từ khoá: gộp khoảng trắng thừa, bỏ nhãn rỗng,
+ * bỏ trùng không phân biệt hoa thường. Một tên gọi riêng chứ không dùng thẳng
+ * `normalizeKeywords` để nơi gọi đọc ra ngay mình đang làm việc với cái gì —
+ * hai danh sách này nằm cạnh nhau trong cùng một khối giao diện.
+ */
+export function normalizeCategories(categories: string[]): string[] {
+  return normalizeKeywords(categories);
+}
+
+/*
+ * `category_map` gửi kèm `/jobs`: danh mục ngành nghề được phép của từng quốc gia.
+ *
+ * Khác `buildKeywordMap` ở đúng một chỗ, và chỗ đó quan trọng: KHÔNG bỏ quốc gia
+ * `source === "original"` (Việt Nam). Từ khoá có bộ chung để rơi về, còn danh mục
+ * thì KHÔNG — nước nào vắng mặt ở đây là nước đó không lọc gì cả. Bỏ Việt Nam ra
+ * là lặng lẽ tắt bộ lọc ngay tại sân nhà.
+ *
+ * Danh mục rỗng thì bỏ hẳn khỏi map, đúng bằng nghĩa "không lọc nước này" mà
+ * giao diện đã cảnh báo — gửi mảng rỗng lên là mời backend tự hiểu theo cách khác.
+ */
+export function buildCategoryMap(
+  items: CountryKeywords[],
+): Record<string, string[]> {
+  const map: Record<string, string[]> = {};
+  for (const item of items) {
+    const categories = normalizeCategories(item.categories ?? []);
+    if (categories.length === 0) continue;
+    map[item.country_code.toUpperCase()] = categories;
   }
   return map;
 }

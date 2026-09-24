@@ -288,6 +288,14 @@ export const placeColumns: ColumnDef<Place>[] = [
     id: "category",
     accessorKey: "category",
     header: PLACE_COLUMN_LABELS.category,
+    /*
+     * CHỈ hiện tên ngành nghề, không đánh dấu gì.
+     *
+     * Bộ lọc ngành nghề là hạ tầng NGẦM: nó vẫn chạy lúc quét, nhưng người dùng
+     * chỉ gõ từ khoá rồi nhận về dữ liệu sạch, không phải học thêm khái niệm
+     * nào. Các trường `relevance*` vẫn về trong payload và vẫn nằm trong type
+     * để truy vết khi chất lượng dữ liệu có vấn đề — chỉ giao diện là im lặng.
+     */
     cell: ({ row }) => (
       <span className="text-muted-foreground">
         {row.original.category ?? DASH}
