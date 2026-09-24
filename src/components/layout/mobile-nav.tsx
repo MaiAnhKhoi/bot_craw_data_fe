@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { LogoBrand } from "@/components/layout/logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MenuIcon, RadarIcon } from "lucide-react";
+import { MenuIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -50,18 +51,14 @@ export function MobileNav() {
         side="left"
         className="w-72 gap-0 bg-sidebar p-0 text-sidebar-foreground sm:max-w-xs"
       >
-        <div className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-4">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <RadarIcon className="size-4.5" />
-          </span>
+        <div className="flex h-14 items-center border-b border-sidebar-border px-4">
+          <LogoBrand dark />
           {/*
-            * `text-sidebar-foreground` là BẮT BUỘC: SheetTitle mặc định mang
-            * `text-foreground` (màu chữ trên nền popover sáng), mà ngăn kéo này
-            * lại dùng nền tối của sidebar — để nguyên là chữ tối trên nền tối.
+            * Radix/Base UI bắt Sheet phải có tiêu đề để trình đọc màn hình đọc
+            * được ngăn kéo này. Tên công cụ đã nằm trong `LogoBrand` dưới dạng
+            * chữ trang trí nên tiêu đề thật ẩn đi, tránh hiện hai lần.
             */}
-          <SheetTitle className="font-heading text-sm leading-tight font-semibold text-sidebar-foreground">
-            Bot Craw Data
-          </SheetTitle>
+          <SheetTitle className="sr-only">Bot Craw Data</SheetTitle>
         </div>
         <SheetDescription className="sr-only">
           Chuyển giữa các màn hình của công cụ.

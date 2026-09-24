@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { RadarIcon } from "lucide-react";
+import { LogoBrand } from "@/components/layout/logo";
 import { NAV_ITEMS, isNavItemActive } from "@/components/layout/nav-items";
 import { ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -19,17 +19,9 @@ export function AppSidebar() {
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground lg:flex">
       <Link
         href={ROUTES.dashboard}
-        className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-4"
+        className="flex h-14 items-center border-b border-sidebar-border px-4"
       >
-        <span className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-          <RadarIcon className="size-4.5" />
-        </span>
-        <span className="font-heading text-sm leading-tight font-semibold">
-          Bot Craw Data
-          <span className="block text-xs font-normal text-sidebar-foreground/60">
-            Thu thập lead Google Maps
-          </span>
-        </span>
+        <LogoBrand dark />
       </Link>
 
       <nav className="flex-1 space-y-1 p-3">

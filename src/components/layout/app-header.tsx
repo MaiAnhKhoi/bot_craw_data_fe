@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { LogOutIcon, RadarIcon, UserIcon } from "lucide-react";
+import { Logo } from "@/components/layout/logo";
+import { LogOutIcon, UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -41,11 +42,9 @@ export function AppHeader() {
         href={ROUTES.dashboard}
         className="flex min-w-0 items-center gap-2 lg:hidden"
       >
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <RadarIcon className="size-4" />
-        </span>
-        <span className="truncate font-heading text-sm font-semibold">
-          Bot Craw Data
+        <Logo size="sm" className="shrink-0" />
+        <span className="truncate text-[9px] leading-none font-semibold tracking-[0.14em] text-muted-foreground">
+          BOT CRAW DATA
         </span>
       </Link>
 
