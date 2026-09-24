@@ -143,8 +143,20 @@ export const DETAIL_MODE_OPTIONS: { value: DetailMode; label: string }[] = [
 ];
 
 /** Các trạng thái cho phép từng hành động (docs/API_CONTRACT.md §2). */
+
+/*
+ * `queued` CŨNG tạm dừng được, không riêng `running`.
+ *
+ * Backend đã cho phép từ đầu (`JobService.pause` nhận cả hai trạng thái), chỉ
+ * có giao diện là chặt hơn không vì lý do gì. Hậu quả thật: worker chạy tuần tự
+ * nên job xếp hàng là chuyện thường, mà job đang chờ lại chỉ hiện mỗi nút Huỷ —
+ * người dùng huỷ trong khi họ chỉ muốn HOÃN, và mất luôn cả cấu hình job đó.
+ *
+ * Tạm dừng một job đang chờ có ý nghĩa rõ ràng: giữ nó lại, đừng để worker nhặt
+ * lên, khi nào cần thì Chạy tiếp.
+ */
 export function canPause(status: JobStatus): boolean {
-  return status === "running";
+  return status === "running" || status === "queued";
 }
 
 export function canResume(status: JobStatus): boolean {
