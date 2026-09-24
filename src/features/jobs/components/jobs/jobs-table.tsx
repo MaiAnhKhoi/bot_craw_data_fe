@@ -13,13 +13,14 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
+import { useIsAdmin } from "@/features/auth/hooks/use-is-admin";
 import { JobActionButtons } from "@/features/jobs/components/shared/job-action-buttons";
 import { JobProgress } from "@/features/jobs/components/shared/job-progress";
 import { JobStatusBadge } from "@/features/jobs/components/shared/job-status-badge";
 import type { Job } from "@/features/jobs/types/job";
 
 /* Nhãn cột — khai một chỗ để skeleton dùng lại đúng bộ cột của bảng thật. */
-export const JOB_TABLE_COLUMNS = [
+const JOB_TABLE_COLUMNS = [
   "Tên job",
   "Trạng thái",
   "Tiến độ",
@@ -28,14 +29,33 @@ export const JOB_TABLE_COLUMNS = [
   "Hành động",
 ];
 
+/*
+ * Bộ cột theo vai trò. Cột cuối ("Hành động") chỉ chứa nút tạm dừng/huỷ, nên
+ * với sale nó luôn rỗng — giữ lại thì chỉ thêm một cột trắng vào vùng cuộn
+ * ngang vốn đã chật trên điện thoại.
+ */
+export function jobTableColumns(isAdmin: boolean): string[] {
+  return isAdmin ? JOB_TABLE_COLUMNS : JOB_TABLE_COLUMNS.slice(0, -1);
+}
+
 /* Bảng danh sách job. Dữ liệu do màn cha nạp (phân trang ở server). */
 export function JobsTable({ jobs }: { jobs: Job[] }) {
+  const isAdmin = useIsAdmin();
+
   if (jobs.length === 0) {
     return (
       <EmptyState
         icon={<BriefcaseIcon className="size-5" />}
         title="Chưa có job nào"
-        description='Bấm "Tạo job" để đặt lệnh quét đầu tiên.'
+        /*
+         * Sale không có nút "Tạo job" trên màn này, nên bảo họ bấm nó là khiến
+         * họ đi tìm một thứ không tồn tại.
+         */
+        description={
+          isAdmin
+            ? 'Bấm "Tạo job" để đặt lệnh quét đầu tiên.'
+            : "Chưa ai đặt lệnh quét. Nhờ quản trị viên tạo job để có dữ liệu mới."
+        }
       />
     );
   }
@@ -44,7 +64,7 @@ export function JobsTable({ jobs }: { jobs: Job[] }) {
     <Table>
       <TableHeader>
         <TableRow>
-          {JOB_TABLE_COLUMNS.map((column) => (
+          {jobTableColumns(isAdmin).map((column) => (
             <TableHead key={column} className="first:pl-4 last:pr-4">
               {column}
             </TableHead>
@@ -88,7 +108,9 @@ export function JobsTable({ jobs }: { jobs: Job[] }) {
                 {formatNumber(job.new_places)} mới
               </span>
             </TableCell>
-            <TableCell className="text-xs text-muted-foreground">
+            {/* `last:pr-4` để khi cột Hành động vắng mặt (sale) thì ô cuối
+                vẫn có lề phải như mọi bảng khác. */}
+            <TableCell className="text-xs text-muted-foreground last:pr-4">
               <span className="block">Tạo: {formatDateTime(job.created_at)}</span>
               {job.finished_at ? (
                 <span className="block">
@@ -96,9 +118,11 @@ export function JobsTable({ jobs }: { jobs: Job[] }) {
                 </span>
               ) : null}
             </TableCell>
-            <TableCell className="pr-4">
-              <JobActionButtons job={job} />
-            </TableCell>
+            {isAdmin ? (
+              <TableCell className="pr-4">
+                <JobActionButtons job={job} />
+              </TableCell>
+            ) : null}
           </TableRow>
         ))}
       </TableBody>

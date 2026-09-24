@@ -19,7 +19,7 @@ import { placesHrefForQuery } from "@/features/remaining-areas/lib/remaining-are
 import type { RemainingArea } from "@/features/remaining-areas/types/remaining-area";
 
 /* Nhãn cột — khai một chỗ để skeleton dùng lại đúng bộ cột của bảng thật. */
-export const REMAINING_AREA_COLUMNS = [
+const REMAINING_AREA_COLUMNS = [
   "Chọn",
   "Địa bàn",
   "Vì sao dừng",
@@ -27,6 +27,14 @@ export const REMAINING_AREA_COLUMNS = [
   "Quét lúc",
   "Job gần nhất",
 ];
+
+/*
+ * Bộ cột theo vai trò: cột "Chọn" chỉ có nghĩa khi người xem tạo được job chia
+ * nhỏ. Sale vẫn đọc bảng này bình thường, chỉ không có ô tích.
+ */
+export function remainingAreaColumns(selectable: boolean): string[] {
+  return selectable ? REMAINING_AREA_COLUMNS : REMAINING_AREA_COLUMNS.slice(1);
+}
 
 /*
  * Bảng địa bàn còn sót. Mỗi dòng là MỘT chuỗi truy vấn, đã gộp qua mọi job và
@@ -47,11 +55,17 @@ export const REMAINING_AREA_COLUMNS = [
  */
 export function RemainingAreasTable({
   areas,
+  selectable,
   selected,
   onToggle,
   onToggleAll,
 }: {
   areas: RemainingArea[];
+  /**
+   * Có hiện ô tích hay không — tắt với tài khoản sale, vì họ không tạo được job
+   * chia nhỏ. Chọn được mà không làm gì được thì ô tích chỉ là một ngõ cụt.
+   */
+  selectable: boolean;
   selected: ReadonlySet<string>;
   onToggle: (query: string, checked: boolean) => void;
   onToggleAll: (checked: boolean) => void;
@@ -72,20 +86,22 @@ export function RemainingAreasTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-10 pl-4">
-            {/*
-              * Ô chọn ở tiêu đề chỉ nhận trang ĐANG XEM. Không gom cả 200 dòng
-              * ở mọi trang: một cú bấm mà đặt lệnh chạy nhiều ngày thì phải là
-              * việc cố ý, không phải việc vô tình.
-              */}
-            <Checkbox
-              checked={daChonHet}
-              onCheckedChange={(checked) => onToggleAll(checked === true)}
-              aria-label="Chọn mọi địa bàn trong trang này"
-            />
-          </TableHead>
+          {selectable ? (
+            <TableHead className="w-10 pl-4">
+              {/*
+                * Ô chọn ở tiêu đề chỉ nhận trang ĐANG XEM. Không gom cả 200 dòng
+                * ở mọi trang: một cú bấm mà đặt lệnh chạy nhiều ngày thì phải là
+                * việc cố ý, không phải việc vô tình.
+                */}
+              <Checkbox
+                checked={daChonHet}
+                onCheckedChange={(checked) => onToggleAll(checked === true)}
+                aria-label="Chọn mọi địa bàn trong trang này"
+              />
+            </TableHead>
+          ) : null}
           {REMAINING_AREA_COLUMNS.slice(1).map((column) => (
-            <TableHead key={column} className="last:pr-4">
+            <TableHead key={column} className="first:pl-4 last:pr-4">
               {column}
             </TableHead>
           ))}
@@ -109,21 +125,25 @@ export function RemainingAreasTable({
               key={area.query}
               data-state={selected.has(area.query) ? "selected" : undefined}
             >
-              <TableCell className="w-10 pl-4">
-                <Checkbox
-                  checked={selected.has(area.query)}
-                  onCheckedChange={(checked) =>
-                    onToggle(area.query, checked === true)
-                  }
-                  aria-label={`Chọn ${area.query}`}
-                />
-              </TableCell>
+              {selectable ? (
+                <TableCell className="w-10 pl-4">
+                  <Checkbox
+                    checked={selected.has(area.query)}
+                    onCheckedChange={(checked) =>
+                      onToggle(area.query, checked === true)
+                    }
+                    aria-label={`Chọn ${area.query}`}
+                  />
+                </TableCell>
+              ) : null}
               {/*
                 * `block truncate` là bắt buộc: TableCell mang sẵn
                 * `whitespace-nowrap`, `max-w-*` một mình chỉ giới hạn bề rộng ô
                 * chứ không cắt chữ — tên địa bàn dài sẽ vẽ đè lên cột bên cạnh.
+                * `first:pl-4` lo trường hợp không có ô tích (sale): cột đầu vẫn
+                * phải có lề trái như mọi bảng khác.
                 */}
-              <TableCell className="max-w-72 font-medium">
+              <TableCell className="max-w-72 font-medium first:pl-4">
                 {coDiaDiem ? (
                   <Link
                     href={placesHrefForQuery(area.job_id, area.query)}
