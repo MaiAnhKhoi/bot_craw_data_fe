@@ -1,4 +1,4 @@
-import { UsersIcon } from "lucide-react";
+import { ClockIcon, UsersIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -9,10 +9,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/empty-state";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatRemaining } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { userRoleMeta } from "@/types/domain";
 import { UserRowActions } from "@/features/users/components/users/user-row-actions";
+import {
+  accountLockState,
+  type AccountLockState,
+} from "@/features/users/lib/account-lock";
 import type { Account } from "@/features/users/types/user";
 
 /* Nhãn cột — khai một chỗ để skeleton dùng lại đúng bộ cột của bảng thật. */
@@ -28,19 +32,54 @@ export const USER_TABLE_COLUMNS = [
 /*
  * Màu huy hiệu trạng thái, theo đúng cách đã dùng ở cột Chăm sóc bên Địa điểm:
  * trạng thái PHỔ BIẾN (đang dùng) là ô rỗng viền nhạt, trạng thái cần để mắt
- * (đã khoá) mới có nền đặc và nét gạch ngang. Tô đậm cả bảng thì màu không còn
- * nói được gì — thứ duy nhất phải nổi lên là những tài khoản không vào được nữa.
+ * mới có nền đặc. Tô đậm cả bảng thì màu không còn nói được gì — thứ duy nhất
+ * phải nổi lên là những tài khoản không vào được nữa.
+ *
+ * Ba trạng thái KHÁC NHAU VỀ BẢN CHẤT chứ không phải ba mức của cùng một thang,
+ * nên mỗi cái một sắc thái riêng:
+ *
+ * - `normal`: bình thường.
+ * - `temporary`: HỆ THỐNG tự khoá vì nhập sai quá nhiều lần, và TỰ HẾT sau vài
+ *   phút. Màu hổ phách — sắc "để mắt một chút" đang dùng cho job tạm dừng —
+ *   kèm đồng hồ đếm ngược, vì thứ admin cần biết là còn bao lâu nữa thì hết,
+ *   chứ không phải có bị khoá hay không.
+ * - `disabled`: ADMIN chủ động khoá, nằm đó tới khi có người mở. Nền xám đặc và
+ *   nét gạch ngang: tài khoản này đã ngưng dùng.
+ *
+ * Cho `temporary` mặc chung bộ xám gạch ngang với `disabled` là dạy người dùng
+ * đọc sai: một cái tự rơi ra sau mươi phút, cái kia nằm đó vĩnh viễn.
  */
-const TRANG_THAI = {
-  active: {
+const TRANG_THAI: Record<
+  AccountLockState,
+  { label: string; badgeClass: string }
+> = {
+  normal: {
     label: "Đang dùng",
     badgeClass: "border-border bg-transparent text-muted-foreground",
   },
-  locked: {
+  temporary: {
+    label: "Tạm khoá",
+    badgeClass:
+      "bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300",
+  },
+  disabled: {
     label: "Đã khoá",
     badgeClass: "bg-muted text-muted-foreground line-through",
   },
 };
+
+/*
+ * Câu hiện khi rê chuột lên huy hiệu khoá tạm.
+ *
+ * Số lần sai liên tiếp và mốc tự mở trả lời đúng câu hỏi tiếp theo của admin:
+ * có ai đang dò mật khẩu của người này không, và có cần làm gì ngay không. Một
+ * chữ "Tạm khoá" trơ trọi thì không đủ để quyết định gì cả.
+ */
+function moTaKhoaTam(account: Account): string {
+  const soLan = account.failed_attempts;
+  const tuMo = formatDateTime(account.locked_until);
+  return `Hệ thống tự khoá sau ${soLan} lần nhập sai liên tiếp. Tự mở lúc ${tuMo}.`;
+}
 
 /*
  * Bảng tài khoản. Dữ liệu do màn cha nạp (phân trang ở server).
@@ -80,9 +119,17 @@ export function UsersTable({
       <TableBody>
         {accounts.map((account) => {
           const role = userRoleMeta(account.role);
-          const trangThai = account.is_active
-            ? TRANG_THAI.active
-            : TRANG_THAI.locked;
+          const khoa = accountLockState(account);
+          const trangThai = TRANG_THAI[khoa];
+          /*
+           * Số phút còn lại tính lúc VẼ, nên nó cũ dần cho tới lượt nạp lại
+           * danh sách kế tiếp. Chấp nhận: dựng thêm một đồng hồ chạy mỗi giây
+           * cho một con số mà admin chỉ liếc qua là đổi lấy cả màn hình vẽ lại
+           * liên tục — mà nếu ai đó đang cần vào gấp thì đã có nút "Mở khoá",
+           * không phải ngồi nhìn đồng hồ.
+           */
+          const conLai =
+            khoa === "temporary" ? formatRemaining(account.locked_until) : "";
           const laChinhMinh = account.id === currentUserId;
 
           return (
@@ -129,8 +176,15 @@ export function UsersTable({
                 <Badge
                   variant="secondary"
                   className={cn("font-normal", trangThai.badgeClass)}
+                  title={
+                    khoa === "temporary" ? moTaKhoaTam(account) : undefined
+                  }
                 >
+                  {khoa === "temporary" ? <ClockIcon /> : null}
                   {trangThai.label}
+                  {conLai ? (
+                    <span className="tabular-nums">· còn {conLai}</span>
+                  ) : null}
                 </Badge>
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">

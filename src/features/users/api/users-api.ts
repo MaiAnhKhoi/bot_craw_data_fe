@@ -51,3 +51,15 @@ export async function resetUserPassword(
 ): Promise<void> {
   await api.post(`/users/${id}/password`, { new_password: newPassword });
 }
+
+/*
+ * Gỡ KHOÁ TẠM ngay lập tức (`{ "unlocked": true }`).
+ *
+ * Khoá tạm vốn tự hết sau vài phút, nên đây là lối tắt cho đúng một tình huống:
+ * nhân viên đang cần vào gấp và ngồi ngay đó để xác nhận chính họ vừa gõ sai.
+ * Không trả về `Account` nên nơi gọi phải nạp lại danh sách — mốc hết khoá đổi
+ * là chuyện của server, đoán ở client thì bảng nói một đằng, backend một nẻo.
+ */
+export async function unlockUser(id: number): Promise<void> {
+  await api.post(`/users/${id}/unlock`);
+}
