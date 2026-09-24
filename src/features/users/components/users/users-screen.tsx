@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldAlertIcon } from "lucide-react";
+import { InfoIcon, ShieldAlertIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -77,6 +77,25 @@ export function UsersScreen() {
         description="Ai được đặt lệnh quét, ai chỉ đọc dữ liệu."
         actions={<CreateUserDialog />}
       />
+
+      {/*
+       * Dòng này KHÔNG phải trang trí.
+       *
+       * Hai chữ "khoá" trong bảng nghĩa khác hẳn nhau: một cái do admin bấm,
+       * một cái do hệ thống tự làm khi ai đó nhập sai quá nhiều lần rồi tự hết
+       * sau vài phút. Không nói ra thì người đầu tiên thấy huy hiệu "Tạm khoá"
+       * sẽ đi hỏi xem ai vừa khoá tài khoản của nhân viên mình — hoặc tệ hơn,
+       * tưởng hệ thống hỏng.
+       */}
+      <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+        <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+        <span>
+          Huy hiệu <span className="font-medium">Tạm khoá</span> là do hệ thống
+          tự khoá khi nhập sai mật khẩu quá nhiều lần — không phải ai đó khoá
+          tài khoản — và nó tự hết sau vài phút. Nhân viên đang cần vào gấp thì
+          bấm <span className="font-medium">Mở khoá</span> ở dòng đó.
+        </span>
+      </p>
 
       <Card size="sm" className="gap-0 py-0">
         {isPending ? (
