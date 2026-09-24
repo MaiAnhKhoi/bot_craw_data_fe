@@ -1,4 +1,9 @@
+import type { RelevanceSource } from "@/types/domain";
+
 /* Kiểu của module Địa điểm — khớp docs/API_CONTRACT.md §3. */
+
+/* Bảng "Đã loại" bên Jobs cũng dùng, nên kiểu gốc nằm ở `types/domain.ts`. */
+export type { RelevanceSource };
 
 export type LivenessLabel = "ACTIVE" | "SUSPECT" | "DEAD";
 
@@ -16,6 +21,29 @@ export type WebsiteStatus = "OK" | "DEAD" | "PARKED" | "UNCHECKED" | "NONE";
  * rủi ro, là chuyện chắc chắn xảy ra.
  */
 export type ContactStatus = "new" | "called" | "interested" | "rejected";
+
+/*
+ * Ngành nghề của địa điểm có nằm trong danh mục đã khai cho quốc gia đó không.
+ *
+ *   match   nằm trong danh mục — luật cứng tự quyết.
+ *   weak    rõ ràng khác ngành. Bị loại NGAY LÚC GHI nên gần như không còn xuất
+ *           hiện trong bảng; những dòng `weak` còn thấy là dữ liệu quét từ trước
+ *           khi có tầng lọc này.
+ *   unsure  luật cứng không quyết nổi (nhãn vô nghĩa kiểu "Company", hoặc nhãn
+ *           khác ngành nhưng tên lại dính chữ) VÀ AI cũng không trả lời được —
+ *           tắt AI, mạng hỏng, trả thiếu. Địa điểm vẫn được GIỮ kèm dấu nghi
+ *           ngờ: một lần mạng chập chờn không được biến thành một lần mất lead.
+ *   null    CHƯA CHẤM ĐƯỢC — dữ liệu quét trước khi có danh mục, hoặc job chạy
+ *           mà không khai danh mục nào.
+ *
+ * Ca AI phân xử được thì rơi thẳng về `match` hoặc `weak` — `relevance_source`
+ * mới là thứ nói ai đã quyết, chứ không phải giá trị này.
+ *
+ * KHÔNG dùng ở tầng hiển thị: bộ lọc ngành nghề là hạ tầng ngầm, bảng Địa điểm
+ * không đánh dấu gì theo trường này. Giữ khai báo vì backend vẫn trả về và đây
+ * là đường truy vết khi chất lượng dữ liệu có vấn đề.
+ */
+export type PlaceRelevance = "match" | "weak" | "unsure";
 
 /*
  * 4 trường bắt buộc theo yêu cầu nghiệp vụ: `name` (tên công ty),
@@ -64,6 +92,15 @@ export interface Place {
   website: string | null;
   website_status: WebsiteStatus;
   category: string | null;
+  /** Xem `PlaceRelevance`. `null` = chưa chấm được, KHÔNG phải "lạc đề". */
+  relevance: PlaceRelevance | null;
+  /** AI hay luật cứng đã ra phán quyết đó. Không hiện ra giao diện. */
+  relevance_source: RelevanceSource | null;
+  /**
+   * Câu giải thích của AI, CHỈ có khi `relevance_source === "ai"`. Không hiện ra
+   * giao diện — đây là thứ để đọc khi đi truy một dòng dữ liệu đáng ngờ.
+   */
+  relevance_reason: string | null;
   rating: number | null;
   review_count: number | null;
   business_status: BusinessStatus;
@@ -118,6 +155,12 @@ export interface PlaceFilters {
    * với giá trị lạ (không phải lỗi), nên ô lọc chỉ cần đưa ra đúng bốn mã.
    */
   contact_status?: ContactStatus;
+  /*
+   * Lọc theo mức đúng ngành. Backend vẫn nhận, nhưng thanh lọc KHÔNG còn ô này:
+   * bộ lọc ngành nghề là hạ tầng ngầm, người dùng không cần biết tới nó. Giữ
+   * khai báo cho khớp hợp đồng API và để soi dữ liệu khi cần.
+   */
+  relevance?: PlaceRelevance;
   /** Lặp được: ?liveness=ACTIVE&liveness=SUSPECT */
   liveness?: LivenessLabel[];
   business_status?: BusinessStatus;

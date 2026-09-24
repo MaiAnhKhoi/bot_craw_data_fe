@@ -47,13 +47,16 @@ export const JOB_FORM_DEFAULTS: JobFormInput = {
 /*
  * Đổi giá trị form sang DTO JobCreate: tách textarea thành mảng, bỏ dòng trống.
  *
- * `keywordMap` không nằm trong Zod schema vì nó KHÔNG phải thứ người dùng gõ —
- * nó là kết quả người dùng duyệt ở khối "Từ khoá bản địa" (features/keyword).
- * Rỗng thì không gửi trường này lên, để payload đúng bằng thứ backend cần.
+ * `keywordMap` và `categoryMap` không nằm trong Zod schema vì chúng KHÔNG phải
+ * thứ người dùng gõ — chúng là kết quả người dùng duyệt ở khối "Từ khoá bản địa"
+ * (features/keyword). Rỗng thì không gửi trường đó lên, để payload đúng bằng thứ
+ * backend cần — và với `category_map` thì vắng mặt có nghĩa rõ ràng: không lọc
+ * ngành nghề, ghi lại mọi thứ Google trả về.
  */
 export function toJobCreate(
   input: JobFormInput,
   keywordMap: Record<string, string[]> = {},
+  categoryMap: Record<string, string[]> = {},
 ): JobCreate {
   const locations = splitLines(input.locations);
   return {
@@ -62,6 +65,8 @@ export function toJobCreate(
     locations: locations.length > 0 ? locations : undefined,
     keyword_map:
       Object.keys(keywordMap).length > 0 ? keywordMap : undefined,
+    category_map:
+      Object.keys(categoryMap).length > 0 ? categoryMap : undefined,
     detail_mode: input.detail_mode,
     enrich_website: input.enrich_website,
     skip_recent_queries: input.skip_recent_queries,

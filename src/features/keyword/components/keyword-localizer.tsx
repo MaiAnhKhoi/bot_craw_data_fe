@@ -165,6 +165,48 @@ export function KeywordLocalizer({
   };
 
   /*
+   * Ghi bản sửa tay của MỘT quốc gia lên backend.
+   *
+   * Luôn gửi CẢ từ khoá lẫn danh mục, dù người dùng chỉ sửa được từ khoá:
+   * `/keywords/save` ghi đè cả bản ghi, nên gửi thiếu một trường là xoá trắng
+   * trường đó. Danh mục ngành nghề nay là hạ tầng ngầm — không hiện ra, không
+   * sửa được — nhưng gửi thiếu nó là tắt luôn bộ lọc ở backend cho quốc gia
+   * đó, hỏng mà không có một dấu hiệu nào trên giao diện.
+   *
+   * `sourceKeywords` chứ không phải `keywords` đang gõ: backend tính khoá đệm
+   * theo bộ từ khoá GỐC của lượt gợi ý, gửi bộ mới là ghi vào một ô đệm khác và
+   * bản sửa coi như rơi mất.
+   */
+  const luuBanSua = (
+    item: CountryKeywords,
+    translated: string[],
+    categories: string[],
+  ) => {
+    save.mutate(
+      {
+        keywords: sourceKeywords ?? keywords,
+        country_code: item.country_code,
+        language: item.language,
+        translated,
+        categories,
+      },
+      {
+        onSuccess: () => {
+          toast.success(`Đã lưu từ khoá cho ${item.country_name}.`);
+        },
+        onError: (error) => {
+          toast.error(
+            errorMessage(
+              error,
+              `Không nhớ được bản sửa cho ${item.country_name} — job này vẫn dùng đúng thứ bạn vừa sửa trên màn hình.`,
+            ),
+          );
+        },
+      },
+    );
+  };
+
+  /*
    * Sửa xong một ô: chỉ lưu khi nội dung THẬT SỰ đổi (so sau khi chuẩn hoá, nên
    * thêm dòng trống hay đổi thứ tự khoảng trắng không tính là sửa).
    */
@@ -194,27 +236,7 @@ export function KeywordLocalizer({
       ),
     );
 
-    save.mutate(
-      {
-        keywords: sourceKeywords ?? keywords,
-        country_code: item.country_code,
-        language: item.language,
-        translated: edited,
-      },
-      {
-        onSuccess: () => {
-          toast.success(`Đã lưu từ khoá cho ${item.country_name}.`);
-        },
-        onError: (error) => {
-          toast.error(
-            errorMessage(
-              error,
-              `Không nhớ được bản sửa cho ${item.country_name} — job này vẫn dùng đúng từ khoá bạn vừa gõ.`,
-            ),
-          );
-        },
-      },
-    );
+    luuBanSua(item, edited, item.categories);
   };
 
   return (
