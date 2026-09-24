@@ -2,6 +2,7 @@
 
 import { PauseIcon, PlayIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useIsAdmin } from "@/features/auth/hooks/use-is-admin";
 import { useJobAction } from "@/features/jobs/hooks/use-job-mutations";
 import {
   canCancel,
@@ -18,6 +19,11 @@ import type { Job } from "@/features/jobs/types/job";
  * (JOB_INVALID_STATE) do bấm nhầm.
  *
  * `size="sm"` cho bảng danh sách, `size="default"` cho màn chi tiết.
+ *
+ * CHỈ ADMIN THẤY. Điều khiển worker là việc của người đặt lệnh: worker chạy
+ * tuần tự, huỷ nhầm job của người khác là mất luôn nhiều giờ quét đã chạy.
+ * Ẩn ở đây CHỈ để bớt nút cho gọn — backend mới là chỗ chặn thật, `/jobs/{id}/
+ * {pause,resume,cancel}` trả 403 với tài khoản sale dù ai gọi bằng cách nào.
  */
 export function JobActionButtons({
   job,
@@ -26,8 +32,15 @@ export function JobActionButtons({
   job: Job;
   size?: "sm" | "default";
 }) {
+  const isAdmin = useIsAdmin();
   const action = useJobAction();
   const pending = action.isPending;
+
+  /*
+   * Gác ở ĐÂY chứ không ở hai nơi gọi (bảng job và màn chi tiết): cụm nút này
+   * đi đâu thì luật đi theo đó, không ai phải nhớ kiểm tra lại lần nữa.
+   */
+  if (!isAdmin) return null;
 
   return (
     <div className="flex items-center gap-1.5">

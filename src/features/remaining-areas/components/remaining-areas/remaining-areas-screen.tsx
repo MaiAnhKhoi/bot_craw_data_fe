@@ -21,9 +21,10 @@ import {
   ALL_STOP_REASONS,
   STOP_REASON_FILTER_OPTIONS,
 } from "@/features/remaining-areas/lib/remaining-areas";
+import { useIsAdmin } from "@/features/auth/hooks/use-is-admin";
 import {
-  REMAINING_AREA_COLUMNS,
   RemainingAreasTable,
+  remainingAreaColumns,
 } from "@/features/remaining-areas/components/remaining-areas/remaining-areas-table";
 import { SplitSheet } from "@/features/remaining-areas/components/remaining-areas/split-sheet";
 import { useRemainingAreas } from "@/features/remaining-areas/hooks/use-remaining-areas";
@@ -50,6 +51,19 @@ import type { RemainingStopReason } from "@/features/remaining-areas/types/remai
 export function RemainingAreasScreen() {
   const [page, setPage] = useState(1);
   const [stopReason, setStopReason] = useState<string>(ALL_STOP_REASONS);
+  /*
+   * Sale XEM được trang này — biết địa bàn nào còn sót là biết dữ liệu mình
+   * đang cầm thiếu ở đâu. Chỉ phần CHỌN DÒNG + "Tạo job chia nhỏ" là của admin:
+   * một tỉnh bung ra 168 truy vấn, mỗi truy vấn khoảng 40 giây, tức là gần hai
+   * tiếng worker cho một cú bấm.
+   *
+   * Ô chọn cũng ẩn theo, không chỉ cái nút: để lại ô chọn mà bỏ nút là dẫn
+   * người ta vào một ngõ cụt — chọn xong rồi chẳng làm được gì.
+   *
+   * Và như mọi chỗ khác, ẩn KHÔNG phải là chặn: `POST /jobs/remaining-areas/
+   * split` trả 403 với tài khoản sale.
+   */
+  const isAdmin = useIsAdmin();
   /*
    * Lựa chọn GIỮ NGUYÊN khi đổi trang hoặc đổi bộ lọc, vì nó được nhận diện
    * bằng chuỗi truy vấn chứ không bằng vị trí dòng. Quy trình thật là lọc
@@ -141,7 +155,7 @@ export function RemainingAreasScreen() {
             * điện thoại. Chỉ hiện khi đã chọn ít nhất một dòng: một nút mờ đi
             * kèm "0 địa bàn" chẳng nói được gì mà vẫn chiếm chỗ.
             */}
-          {selected.size > 0 ? (
+          {isAdmin && selected.size > 0 ? (
             <div className="ml-auto flex w-full items-center gap-2 sm:w-auto">
               <span className="text-sm text-muted-foreground">
                 Đã chọn {formatNumber(selected.size)} địa bàn
@@ -158,7 +172,7 @@ export function RemainingAreasScreen() {
         </div>
 
         {isPending ? (
-          <TableSkeleton columns={REMAINING_AREA_COLUMNS} rows={6} />
+          <TableSkeleton columns={remainingAreaColumns(isAdmin)} rows={6} />
         ) : isError ? (
           <ErrorState error={error} onRetry={() => refetch()} />
         ) : (
@@ -172,6 +186,7 @@ export function RemainingAreasScreen() {
             >
               <RemainingAreasTable
                 areas={data.items}
+                selectable={isAdmin}
                 selected={selected}
                 onToggle={handleToggle}
                 onToggleAll={handleToggleAll}
@@ -189,12 +204,15 @@ export function RemainingAreasScreen() {
         )}
       </Card>
 
-      <SplitSheet
-        queries={[...selected]}
-        open={splitOpen}
-        onOpenChange={setSplitOpen}
-        onCreated={clearSelection}
-      />
+      {/* Không render với sale: panel này gọi ngay /split-preview khi mở. */}
+      {isAdmin ? (
+        <SplitSheet
+          queries={[...selected]}
+          open={splitOpen}
+          onOpenChange={setSplitOpen}
+          onCreated={clearSelection}
+        />
+      ) : null}
     </div>
   );
 }

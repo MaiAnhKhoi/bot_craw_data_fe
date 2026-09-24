@@ -3,6 +3,7 @@ import {
   LayoutDashboardIcon,
   MapPinOffIcon,
   MapPinnedIcon,
+  UsersIcon,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { REMAINING_AREAS_ROUTE } from "@/features/remaining-areas/lib/remaining-areas";
@@ -18,6 +19,12 @@ export interface NavItem {
   href: string;
   label: string;
   icon: typeof LayoutDashboardIcon;
+  /**
+   * Chỉ hiện với admin. ẨN MỤC MENU KHÔNG PHẢI LÀ BẢO MẬT — đây thuần tuý là
+   * bớt thứ vô dụng trước mắt sale. Ai gõ thẳng đường dẫn vẫn vào được trang, và
+   * thứ chặn thật là 403 của backend trên mọi endpoint bên dưới.
+   */
+  adminOnly?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -34,7 +41,26 @@ export const NAV_ITEMS: NavItem[] = [
     icon: MapPinOffIcon,
   },
   { href: ROUTES.places, label: "Địa điểm", icon: MapPinnedIcon },
+  /*
+   * Cuối danh sách vì nó nằm ngoài quy trình quét → chăm sóc lead: mỗi tháng mở
+   * một lần, lúc có người vào hoặc nghỉ.
+   */
+  {
+    href: ROUTES.users,
+    label: "Quản lý tài khoản",
+    icon: UsersIcon,
+    adminOnly: true,
+  },
 ];
+
+/*
+ * Mục menu hiện cho vai trò hiện tại. Sidebar và ngăn kéo mobile cùng gọi hàm
+ * này — lọc riêng ở hai nơi là cách chắc chắn nhất để một hôm nào đó menu trên
+ * điện thoại còn sót lại mục mà desktop đã bỏ.
+ */
+export function visibleNavItems(isAdmin: boolean): NavItem[] {
+  return isAdmin ? NAV_ITEMS : NAV_ITEMS.filter((item) => !item.adminOnly);
+}
 
 /*
  * Mục nào đang được chọn. `/` là trang gốc nên phải so khớp TUYỆT ĐỐI, nếu

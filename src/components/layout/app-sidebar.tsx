@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoBrand } from "@/components/layout/logo";
-import { NAV_ITEMS, isNavItemActive } from "@/components/layout/nav-items";
+import { isNavItemActive, visibleNavItems } from "@/components/layout/nav-items";
+import { useIsAdmin } from "@/features/auth/hooks/use-is-admin";
 import { ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,8 @@ import { cn } from "@/lib/utils";
  */
 export function AppSidebar() {
   const pathname = usePathname();
+  const isAdmin = useIsAdmin();
+  const items = visibleNavItems(isAdmin);
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground lg:flex">
@@ -25,7 +28,7 @@ export function AppSidebar() {
       </Link>
 
       <nav className="flex-1 space-y-1 p-3">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active = isNavItemActive(item.href, pathname);
           const Icon = item.icon;
           return (

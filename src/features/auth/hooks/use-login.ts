@@ -9,11 +9,13 @@ import { useAuthStore } from "@/stores/auth-store";
 import type { LoginInput } from "@/features/auth/schemas/login-schema";
 
 /*
- * Mutation đăng nhập: gọi POST /auth/login → lưu token (localStorage + store)
- * → đổ sẵn hồ sơ người dùng vào cache để khung dashboard render ngay, không
- * phải chờ thêm một vòng /auth/me.
+ * Mutation đăng nhập: gọi POST /auth/login → lưu token + vai trò (localStorage
+ * + store) → đổ sẵn hồ sơ người dùng vào cache để khung dashboard render ngay,
+ * không phải chờ thêm một vòng /auth/me.
  *
  * Hồ sơ KHÔNG nằm trong zustand: đó là dữ liệu server, thuộc về TanStack Query.
+ * Riêng `role` có thêm một bản sao cạnh token vì menu và các nút chỉ-admin phải
+ * dựng được ngay ở khung hình đầu sau khi F5 (xem auth-store.ts).
  */
 export function useLogin() {
   const queryClient = useQueryClient();
@@ -21,7 +23,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: async (input: LoginInput) => {
       const result = await login(input);
-      useAuthStore.getState().setToken(result.access_token);
+      useAuthStore.getState().setSession(result.access_token, result.user.role);
       queryClient.setQueryData(CURRENT_USER_QUERY_KEY, result.user);
       return result;
     },

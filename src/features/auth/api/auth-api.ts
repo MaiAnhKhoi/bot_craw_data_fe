@@ -1,5 +1,10 @@
 import { api } from "@/lib/api";
-import type { LoginRequest, LoginResponse, User } from "@/features/auth/types/auth";
+import type {
+  ChangePasswordRequest,
+  LoginRequest,
+  LoginResponse,
+  User,
+} from "@/features/auth/types/auth";
 
 /*
  * Lớp API của module Auth — nơi DUY NHẤT chạm tới endpoint /auth/*.
@@ -18,4 +23,14 @@ export async function login(input: LoginRequest): Promise<LoginResponse> {
 export async function getMe(): Promise<User> {
   const response = await api.get<User>("/auth/me");
   return response.data;
+}
+
+/*
+ * Tự đổi mật khẩu. KHÔNG trả về token mới — phiên hiện tại vẫn chạy tiếp, nên
+ * sau khi đổi ta không đá người dùng về màn đăng nhập.
+ */
+export async function changePassword(
+  input: ChangePasswordRequest,
+): Promise<void> {
+  await api.post("/auth/change-password", input);
 }
