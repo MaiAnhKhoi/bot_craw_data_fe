@@ -4,6 +4,7 @@ import type {
   JobQueryStopReason,
   JobStatus,
 } from "@/features/jobs/types/job";
+import type { JobPhase } from "@/types/domain";
 
 /*
  * Bảng nhãn + màu của module Jobs. Cùng lý do với liveness bên Địa điểm:
@@ -155,29 +156,55 @@ export function canCancel(status: JobStatus): boolean {
 }
 
 /*
- * Phần trăm tiến độ của một job.
+ * Tiến độ của một job: phần trăm VÀ đang đếm theo đơn vị nào.
  *
- * Ưu tiên đếm theo ĐỊA ĐIỂM vì đó là phần chiếm gần hết thời gian chạy; chỉ khi
- * job còn ở pha tìm kiếm (chưa biết tổng số địa điểm) mới rơi về đếm theo truy
- * vấn. Job đã kết thúc thì luôn là 100% — đừng để thanh tiến độ đứng ở 97% mãi
- * chỉ vì vài địa điểm bị bỏ qua.
+ * Trả cả hai trong một lần vì trước đây thanh tiến độ tính phần trăm ở đây còn
+ * dòng chữ bên trên tự quyết đơn vị bằng một điều kiện KHÁC — hai nơi lệch nhau
+ * là chuyện sớm muộn.
+ *
+ * Bám theo PHA, không bám theo "đã có địa điểm nào chưa". Đây chính là lỗi cũ:
+ * điều kiện `total_places > 0` đúng ngay từ địa điểm đầu tiên tìm được, trong
+ * khi `done_places` chỉ bắt đầu tăng ở PHA CHI TIẾT. Kết quả là suốt cả pha tìm
+ * kiếm — với job quét cả thành phố là hơn một tiếng — thanh đứng im ở
+ * "0/2.075 địa điểm · 0%" dù thực tế đã chạy xong 38/168 truy vấn.
  */
-export function jobProgressPercent(job: {
+export interface JobProgress {
+  percent: number;
+  done: number;
+  total: number;
+  /** Đơn vị đang đếm, để dòng chữ và thanh luôn nói cùng một chuyện. */
+  unit: "truy vấn" | "địa điểm";
+}
+
+export function jobProgress(job: {
   status: JobStatus;
+  phase: JobPhase;
   total_places: number;
   done_places: number;
   total_queries: number;
   done_queries: number;
-}): number {
-  if (job.status === "done") return 100;
-  if (job.total_places > 0) {
-    return Math.min(100, Math.round((job.done_places / job.total_places) * 100));
+}): JobProgress {
+  /*
+   * Pha tìm kiếm (và job chưa chạy) đếm theo TRUY VẤN — đó là thứ duy nhất đang
+   * tiến triển lúc đó. Pha chi tiết/kiểm tra website mới đếm theo địa điểm.
+   */
+  const theoTruyVan = job.phase === "search" || job.phase === "idle";
+  const done = theoTruyVan ? job.done_queries : job.done_places;
+  const total = theoTruyVan ? job.total_queries : job.total_places;
+  const unit = theoTruyVan ? "truy vấn" : "địa điểm";
+
+  // Job đã kết thúc thì luôn 100% — đừng để thanh đứng ở 97% mãi chỉ vì vài
+  // địa điểm bị bỏ qua.
+  if (job.status === "done") {
+    return { percent: 100, done: total || done, total, unit };
   }
-  if (job.total_queries > 0) {
-    return Math.min(
-      100,
-      Math.round((job.done_queries / job.total_queries) * 100),
-    );
+  if (total <= 0) {
+    return { percent: 0, done: 0, total: 0, unit };
   }
-  return 0;
+  return {
+    percent: Math.min(100, Math.round((done / total) * 100)),
+    done,
+    total,
+    unit,
+  };
 }

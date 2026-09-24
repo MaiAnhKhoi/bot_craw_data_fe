@@ -1,6 +1,9 @@
 import { api } from "@/lib/api";
 import type {
   AiStatus,
+  KeywordSet,
+  KeywordSetCreate,
+  KeywordSetDeleted,
   LocalizeRequest,
   LocalizeResponse,
   PlanResponse,
@@ -60,5 +63,37 @@ export async function saveKeywords(
   request: SaveRequest,
 ): Promise<SaveResponse> {
   const response = await api.post<SaveResponse>("/keywords/save", request);
+  return response.data;
+}
+
+/*
+ * Bộ từ khoá đã lưu (`/keywords/sets`). KHÔNG dính dáng gì tới AI: đây chỉ là
+ * sổ tay chép lại các bộ từ khoá cũ để gọi lại y nguyên, nên gọi thoải mái.
+ * Backend đã sắp sẵn theo lần cập nhật gần nhất — giữ nguyên thứ tự đó.
+ */
+export async function listKeywordSets(
+  signal?: AbortSignal,
+): Promise<KeywordSet[]> {
+  const response = await api.get<KeywordSet[]>("/keywords/sets", { signal });
+  return response.data;
+}
+
+/*
+ * Tên là KHOÁ: trùng tên thì backend ghi đè chứ không tạo bản thứ hai. Đặt tên
+ * `upsert` để nơi gọi không quên hỏi người dùng trước khi ghi đè bộ cũ.
+ */
+export async function upsertKeywordSet(
+  request: KeywordSetCreate,
+): Promise<KeywordSet> {
+  const response = await api.post<KeywordSet>("/keywords/sets", request);
+  return response.data;
+}
+
+export async function deleteKeywordSet(
+  id: number,
+): Promise<KeywordSetDeleted> {
+  const response = await api.delete<KeywordSetDeleted>(
+    `/keywords/sets/${id}`,
+  );
   return response.data;
 }

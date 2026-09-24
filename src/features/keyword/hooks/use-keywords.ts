@@ -26,6 +26,8 @@ export const keywordKeys = {
   all: ["keywords"] as const,
   status: () => ["keywords", "status"] as const,
   plan: (signature: string) => ["keywords", "plan", signature] as const,
+  /** Bộ từ khoá đã lưu — xem hooks/use-keyword-sets.ts. */
+  sets: () => ["keywords", "sets"] as const,
 };
 
 /*

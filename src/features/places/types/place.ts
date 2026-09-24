@@ -10,6 +10,14 @@ export type BusinessStatus =
 export type WebsiteStatus = "OK" | "DEAD" | "PARKED" | "UNCHECKED" | "NONE";
 
 /*
+ * Trạng thái CHĂM SÓC của bên mình. Khác hẳn `liveness_label` (máy chấm doanh
+ * nghiệp còn sống không) — cái này do người ghi lại sau khi gọi. Không có nó thì
+ * mỗi lần quét lại là sale gọi trùng, mà ở 15-30k lead thì gọi trùng không phải
+ * rủi ro, là chuyện chắc chắn xảy ra.
+ */
+export type ContactStatus = "new" | "called" | "interested" | "rejected";
+
+/*
  * 4 trường bắt buộc theo yêu cầu nghiệp vụ: `name` (tên công ty),
  * `address` (vị trí), `phone` (số điện thoại), `website`.
  * Các trường còn lại phục vụ lọc và chấm sống/chết.
@@ -17,7 +25,19 @@ export type WebsiteStatus = "OK" | "DEAD" | "PARKED" | "UNCHECKED" | "NONE";
 export interface Place {
   id: number;
   name: string;
+  /**
+   * ĐỊA CHỈ ĐẦY ĐỦ, hoặc null. Chỉ lấy từ trang chi tiết của Google nên luôn có
+   * đủ đường/phường/tỉnh/quốc gia. KHÔNG bao giờ là một mẩu.
+   */
   address: string | null;
+  /**
+   * Mẩu địa chỉ trên thẻ kết quả ("Phan Huy Ích"), chỉ có ý nghĩa khi `address`
+   * còn null. Đo thật: 39% số dòng chưa mở chi tiết không có cả mẩu này, phần
+   * còn lại dài trung bình 20 ký tự. Phải hiện kèm dấu hiệu CHƯA ĐẦY ĐỦ —
+   * trộn nó vào cùng một ô như địa chỉ thật chính là gốc của chuyện "ô địa chỉ
+   * lúc rỗng lúc hiện không đầy đủ".
+   */
+  address_short: string | null;
   /** ISO alpha-2, ví dụ "TH". Có thể null với dữ liệu quét trước bản V0003. */
   country_code: string | null;
   /** Tên tiếng Việt do backend tra sẵn, ví dụ "Thái Lan". */
@@ -56,6 +76,15 @@ export interface Place {
   lat: number | null;
   lng: number | null;
   maps_url: string | null;
+  /** Luôn có giá trị — backend mặc định "new", không bao giờ null. */
+  contact_status: ContactStatus;
+  contact_note: string | null;
+  /**
+   * ISO. Chỉ đổi khi TRẠNG THÁI đổi, KHÔNG đổi khi chỉ sửa ghi chú — nhờ vậy nó
+   * trả lời đúng một câu hỏi "gọi lần gần nhất là bao giờ", không bị việc sửa
+   * chính tả trong ghi chú đẩy ngày lên.
+   */
+  contact_at: string | null;
   keywords: string[];
   detail_scraped: boolean;
   scraped_at: string | null;
@@ -84,6 +113,11 @@ export interface PlaceFilters {
   keyword?: string;
   /** Mã ISO alpha-2 ("TH"). Bỏ trống = không lọc theo quốc gia. */
   country?: string;
+  /**
+   * Một trạng thái chăm sóc, bỏ trống = không lọc. Backend trả danh sách RỖNG
+   * với giá trị lạ (không phải lỗi), nên ô lọc chỉ cần đưa ra đúng bốn mã.
+   */
+  contact_status?: ContactStatus;
   /** Lặp được: ?liveness=ACTIVE&liveness=SUSPECT */
   liveness?: LivenessLabel[];
   business_status?: BusinessStatus;

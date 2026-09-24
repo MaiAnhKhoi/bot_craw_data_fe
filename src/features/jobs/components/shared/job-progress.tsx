@@ -1,6 +1,6 @@
 import { Progress } from "@/components/ui/progress";
 import { formatNumber } from "@/lib/format";
-import { jobProgressPercent } from "@/features/jobs/lib/job-status";
+import { jobProgress } from "@/features/jobs/lib/job-status";
 import type { Job } from "@/features/jobs/types/job";
 
 /*
@@ -9,16 +9,16 @@ import type { Job } from "@/features/jobs/types/job";
  * phần trăm theo hai cách khác nhau.
  */
 export function JobProgress({ job }: { job: Job }) {
-  const percent = jobProgressPercent(job);
-  const counted = job.total_places > 0;
+  // Một nguồn duy nhất cho cả con số lẫn đơn vị — trước đây dòng chữ tự quyết
+  // đơn vị bằng một điều kiện khác với chỗ tính phần trăm, nên có lúc hiện
+  // "0/1.985 địa điểm · 0%" trong khi job đã chạy xong 38/168 truy vấn.
+  const { percent, done, total, unit } = jobProgress(job);
 
   return (
     <div className="min-w-36 space-y-1">
       <div className="flex items-baseline justify-between gap-2 text-xs">
         <span className="text-muted-foreground">
-          {counted
-            ? `${formatNumber(job.done_places)}/${formatNumber(job.total_places)} địa điểm`
-            : `${formatNumber(job.done_queries)}/${formatNumber(job.total_queries)} truy vấn`}
+          {formatNumber(done)}/{formatNumber(total)} {unit}
         </span>
         <span className="font-medium tabular-nums">{percent}%</span>
       </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MapPinOffIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import type { RemainingArea } from "@/features/remaining-areas/types/remaining-a
 
 /* Nhãn cột — khai một chỗ để skeleton dùng lại đúng bộ cột của bảng thật. */
 export const REMAINING_AREA_COLUMNS = [
+  "Chọn",
   "Địa bàn",
   "Vì sao dừng",
   "Kết quả",
@@ -37,8 +39,25 @@ export const REMAINING_AREA_COLUMNS = [
  * Bảng KHÔNG tự bọc thêm vùng cuộn ngang: component Table đã có sẵn một cái.
  * Bọc thêm là sinh ra hai thanh cuộn chồng nhau, trên điện thoại thì gần như
  * không cách nào kéo trúng cái mình muốn.
+ *
+ * Ô chọn nhận diện dòng bằng CHUỖI TRUY VẤN chứ không phải `job_id`: mỗi chuỗi
+ * chỉ ra đúng một dòng (backend đã gộp qua mọi job), và chuỗi cũng chính là thứ
+ * gửi lên khi tạo job chia nhỏ. Dùng `job_id` thì chọn xong đổi trang là mất
+ * dấu, vì cùng một địa bàn có thể đổi job gần nhất giữa hai lần tải.
  */
-export function RemainingAreasTable({ areas }: { areas: RemainingArea[] }) {
+export function RemainingAreasTable({
+  areas,
+  selected,
+  onToggle,
+  onToggleAll,
+}: {
+  areas: RemainingArea[];
+  selected: ReadonlySet<string>;
+  onToggle: (query: string, checked: boolean) => void;
+  onToggleAll: (checked: boolean) => void;
+}) {
+  const daChonHet = areas.length > 0 && areas.every((a) => selected.has(a.query));
+
   if (areas.length === 0) {
     return (
       <EmptyState
@@ -53,8 +72,20 @@ export function RemainingAreasTable({ areas }: { areas: RemainingArea[] }) {
     <Table>
       <TableHeader>
         <TableRow>
-          {REMAINING_AREA_COLUMNS.map((column) => (
-            <TableHead key={column} className="first:pl-4 last:pr-4">
+          <TableHead className="w-10 pl-4">
+            {/*
+              * Ô chọn ở tiêu đề chỉ nhận trang ĐANG XEM. Không gom cả 200 dòng
+              * ở mọi trang: một cú bấm mà đặt lệnh chạy nhiều ngày thì phải là
+              * việc cố ý, không phải việc vô tình.
+              */}
+            <Checkbox
+              checked={daChonHet}
+              onCheckedChange={(checked) => onToggleAll(checked === true)}
+              aria-label="Chọn mọi địa bàn trong trang này"
+            />
+          </TableHead>
+          {REMAINING_AREA_COLUMNS.slice(1).map((column) => (
+            <TableHead key={column} className="last:pr-4">
               {column}
             </TableHead>
           ))}
@@ -69,14 +100,30 @@ export function RemainingAreasTable({ areas }: { areas: RemainingArea[] }) {
            * dòng "Không rõ": danh sách kết quả còn chẳng hiện ra.
            */
           const coDiaDiem = (area.results_found ?? 0) > 0;
+          /*
+           * `data-state="selected"` là móc có sẵn của TableRow — dòng đang chọn
+           * tự tô nền, không phải bịa thêm class nào.
+           */
           return (
-            <TableRow key={`${area.job_id}-${area.query}`}>
+            <TableRow
+              key={area.query}
+              data-state={selected.has(area.query) ? "selected" : undefined}
+            >
+              <TableCell className="w-10 pl-4">
+                <Checkbox
+                  checked={selected.has(area.query)}
+                  onCheckedChange={(checked) =>
+                    onToggle(area.query, checked === true)
+                  }
+                  aria-label={`Chọn ${area.query}`}
+                />
+              </TableCell>
               {/*
                 * `block truncate` là bắt buộc: TableCell mang sẵn
                 * `whitespace-nowrap`, `max-w-*` một mình chỉ giới hạn bề rộng ô
                 * chứ không cắt chữ — tên địa bàn dài sẽ vẽ đè lên cột bên cạnh.
                 */}
-              <TableCell className="max-w-72 pl-4 font-medium">
+              <TableCell className="max-w-72 font-medium">
                 {coDiaDiem ? (
                   <Link
                     href={placesHrefForQuery(area.job_id, area.query)}

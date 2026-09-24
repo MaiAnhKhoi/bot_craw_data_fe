@@ -11,6 +11,12 @@ import type { PlaceListParams } from "@/features/places/types/place";
 
 export const placeKeys = {
   all: ["places"] as const,
+  /*
+   * Tiền tố CHUNG của mọi trang danh sách đang nằm trong cache. Mỗi bộ lọc là
+   * một key riêng, nên muốn vá một dòng vào đúng mọi chỗ nó đang hiện thì phải
+   * quét theo tiền tố này chứ không theo một key cụ thể (xem `use-place-contact`).
+   */
+  lists: () => ["places", "list"] as const,
   list: (params: PlaceListParams) => ["places", "list", params] as const,
   countries: () => ["places", "countries"] as const,
   queries: () => ["places", "queries"] as const,

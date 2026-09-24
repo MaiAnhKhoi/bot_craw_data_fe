@@ -1,6 +1,7 @@
 import { api, buildApiUrl } from "@/lib/api";
 import type { Page } from "@/types/common";
 import type {
+  ContactStatus,
   ExportFormat,
   Place,
   PlaceCountry,
@@ -50,6 +51,29 @@ export async function listPlaceCountries(
 /** Đặt lại địa điểm về `pending` để worker quét lại. */
 export async function reverifyPlace(id: number): Promise<Place> {
   const response = await api.post<Place>(`/places/${id}/reverify`);
+  return response.data;
+}
+
+/*
+ * Ghi lại kết quả chăm sóc của một lead.
+ *
+ * Ba nghĩa KHÁC NHAU của `note`, đúng theo contract — đừng gộp:
+ *   không gửi / null  giữ nguyên ghi chú đang có (dùng khi chỉ đổi trạng thái)
+ *   ""                xoá ghi chú
+ *   chuỗi khác        ghi đè
+ * Nếu FE tự tiện gửi "" mỗi lần đổi trạng thái thì mọi ghi chú sale đã gõ sẽ bị
+ * xoá sạch một cách âm thầm — nên `note` để `undefined` chứ không ép kiểu.
+ */
+export interface PlaceContactInput {
+  status: ContactStatus;
+  note?: string | null;
+}
+
+export async function setPlaceContact(
+  id: number,
+  input: PlaceContactInput,
+): Promise<Place> {
+  const response = await api.patch<Place>(`/places/${id}/contact`, input);
   return response.data;
 }
 
