@@ -13,10 +13,11 @@ import { ErrorState } from "@/components/shared/error-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { PaginationBar } from "@/components/shared/pagination-bar";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
+import { useIsAdmin } from "@/features/auth/hooks/use-is-admin";
 import { CreateJobSheet } from "@/features/jobs/components/jobs/create-job-sheet";
 import {
-  JOB_TABLE_COLUMNS,
   JobsTable,
+  jobTableColumns,
 } from "@/features/jobs/components/jobs/jobs-table";
 import { useJobs } from "@/features/jobs/hooks/use-jobs";
 import { JOB_STATUS_META } from "@/features/jobs/lib/job-status";
@@ -43,6 +44,7 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 export function JobsScreen() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<string>(ALL_STATUS);
+  const isAdmin = useIsAdmin();
 
   const { data, isPending, isError, error, refetch, isFetching } = useJobs({
     page,
@@ -56,10 +58,22 @@ export function JobsScreen() {
 
   return (
     <div className="space-y-4">
+      {/*
+       * Sale VẪN xem được danh sách job và tiến độ — biết worker đang bận gì là
+       * biết bao giờ có dữ liệu mới. Chỉ mất nút đặt lệnh.
+       *
+       * Vì sao sale không được tạo job: cả hệ thống có MỘT worker chạy tuần tự
+       * trên MỘT IP văn phòng. Một job đặt sai (lỡ tay chọn 40 nước) chiếm worker
+       * cả ngày và đẩy rủi ro Google chặn IP lên — bị chặn là cả công ty mất
+       * dùng. Form này còn có nút gợi ý từ khoá bản địa gọi AI, tốn tiền thật.
+       *
+       * Ẩn nút KHÔNG phải là bảo mật: `POST /jobs` và mọi thứ dưới `/keywords`
+       * trả 403 với tài khoản sale, đó mới là hàng rào.
+       */}
       <PageHeader
         title="Job quét"
         description="Đặt lệnh quét Google Maps và theo dõi tiến độ."
-        actions={<CreateJobSheet />}
+        actions={isAdmin ? <CreateJobSheet /> : undefined}
       />
 
       <Card size="sm" className="gap-0 py-0">
@@ -86,7 +100,7 @@ export function JobsScreen() {
         </div>
 
         {isPending ? (
-          <TableSkeleton columns={JOB_TABLE_COLUMNS} rows={6} />
+          <TableSkeleton columns={jobTableColumns(isAdmin)} rows={6} />
         ) : isError ? (
           <ErrorState error={error} onRetry={() => refetch()} />
         ) : (
