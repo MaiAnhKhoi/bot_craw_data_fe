@@ -36,9 +36,60 @@ import type { Place, PlaceSort } from "@/features/places/types/place";
  *   thật nên các cột vẫn tự canh đều — khác với kiểu tuyệt đối hoá từng dòng,
  *   vốn phá vỡ căn cột và buộc phải khai chiều rộng cứng cho mọi cột.
  * - Dưới ngưỡng đó thì render thẳng: ảo hoá 50 dòng chỉ tốn thêm phép tính.
+ *
+ * KHUNG CUỘN KIỂU EXCEL. Bảng nằm trong MỘT khung có chiều cao giới hạn, cuộn cả
+ * hai chiều. Trước đây khung chỉ giới hạn chiều cao khi ảo hoá (> 100 dòng), còn
+ * thanh cuộn ngang thì nằm ở ĐÁY TOÀN BỘ bảng — kéo tới dòng 50 là cách thanh
+ * cuộn cả một màn hình, không với tới được cột "Hành động" ở mép phải. Giờ khung
+ * luôn có chiều cao hữu hạn nên thanh cuộn ngang luôn nằm ở mép dưới khung, và
+ * ba thứ được ghim (`position: sticky`) giống "Freeze Panes":
+ *   - hàng tiêu đề (luôn biết đang nhìn cột nào),
+ *   - cột "Tên công ty" bên trái (luôn biết đang nhìn dòng nào),
+ *   - cột "Hành động" bên phải (luôn bấm được nút của dòng đang nhìn).
+ * Bảng này chỉ dựng từ 768px trở lên; điện thoại dùng danh sách thẻ
+ * (`places-cards.tsx`) vì một bảng 11 cột không dùng được ở 375px.
  */
 
 const ROW_HEIGHT = 53;
+
+/*
+ * Chiều cao tối đa của khung: gần hết khung nhìn trừ phần phía trên (tiêu đề
+ * trang, bộ lọc, thanh đếm) và thanh phân trang phía dưới, để thanh cuộn ngang
+ * nằm TRONG màn hình ngay khi mới vào trang chứ không phải cuộn trang mới thấy.
+ * `max()` chặn đáy để màn thấp quá thì vẫn còn vài dòng đọc được.
+ */
+const KHUNG_CUON = "max-h-[max(22rem,calc(100dvh-23rem))]";
+
+/*
+ * Lớp ghim theo id cột. Ô ghim PHẢI có nền đặc, nếu không các cột cuộn qua bên
+ * dưới sẽ lộ xuyên qua chữ. `bg-card` là nền của Card chứa bảng. Khi rê chuột,
+ * dòng được tô `muted/50` — ô ghim đặc nên không tự ăn theo, phải tô lại đúng
+ * màu pha đó (qua `group/row` của TableRow).
+ *
+ * Đường kẻ phân cách vẽ bằng `inset box-shadow` chứ không dùng `border`: bảng
+ * ở chế độ `border-collapse`, viền của ô sticky không trôi theo ô mà ở lại chỗ cũ.
+ *
+ * Cột TÊN chỉ ghim khi KHUNG BẢNG đủ rộng (`@4xl` = 56rem, theo bề rộng của chính
+ * khung chứ không theo màn hình, vì thanh bên trái ăn mất ~240px ở màn lớn). Ghim
+ * cả cột tên (~256px) lẫn cột hành động (~175px) vào khung 720px là đóng băng
+ * 60% bề ngang, phần còn lại chỉ đủ nhìn một cột mỗi lần cuộn. Cột HÀNH ĐỘNG thì
+ * luôn ghim: đó là thứ người dùng không với tới được trong bản cũ.
+ */
+const NEN_GHIM =
+  "bg-card group-hover/row:bg-[color-mix(in_oklab,var(--muted)_50%,var(--card))]";
+const NEN_GHIM_TEN =
+  "@4xl:bg-card @4xl:group-hover/row:bg-[color-mix(in_oklab,var(--muted)_50%,var(--card))]";
+
+const GHIM_DAU: Record<string, string> = {
+  name: "@4xl:left-0 @4xl:z-30 @4xl:shadow-[inset_0_-1px_0_var(--border),inset_-1px_0_0_var(--border)]",
+  actions:
+    "right-0 z-30 shadow-[inset_0_-1px_0_var(--border),inset_1px_0_0_var(--border)]",
+};
+
+const GHIM_THAN: Record<string, string> = {
+  name: `@4xl:sticky @4xl:left-0 @4xl:z-10 @4xl:shadow-[inset_-1px_0_0_var(--border)] ${NEN_GHIM_TEN}`,
+  actions: `sticky right-0 z-10 shadow-[inset_1px_0_0_var(--border)] ${NEN_GHIM}`,
+};
 
 export function PlacesTable({
   places,
@@ -96,11 +147,18 @@ export function PlacesTable({
   };
 
   return (
+    /*
+     * `tabIndex={0}` để người dùng bàn phím cuộn được khung bằng mũi tên: một
+     * vùng cuộn không có phần tử focus được bên trong thì bàn phím không vào nổi.
+     */
     <div
       ref={scrollRef}
-      className={cn(virtualize && "max-h-[70vh] overflow-y-auto")}
+      role="region"
+      aria-label="Bảng địa điểm"
+      tabIndex={0}
+      className={cn(KHUNG_CUON, "@container overflow-auto outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset")}
     >
-      <Table>
+      <Table containerClassName="overflow-visible">
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
@@ -113,7 +171,10 @@ export function PlacesTable({
                 return (
                   <TableHead
                     key={header.id}
-                    className="first:pl-4 last:pr-4 last:text-right"
+                    className={cn(
+                      "sticky top-0 z-20 bg-card shadow-[inset_0_-1px_0_var(--border)] first:pl-4 last:pr-4 last:text-right",
+                      GHIM_DAU[header.column.id],
+                    )}
                   >
                     {header.isPlaceholder ? null : sortable ? (
                       <button
@@ -158,11 +219,18 @@ export function PlacesTable({
           ) : null}
 
           {visibleRows.map((row) => (
-            <TableRow key={row.id} style={{ height: ROW_HEIGHT }}>
+            <TableRow
+              key={row.id}
+              style={{ height: ROW_HEIGHT }}
+              className="group/row"
+            >
               {row.getVisibleCells().map((cell) => (
                 <TableCell
                   key={cell.id}
-                  className="first:pl-4 last:pr-4 last:text-right"
+                  className={cn(
+                    "first:pl-4 last:pr-4 last:text-right",
+                    GHIM_THAN[cell.column.id],
+                  )}
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
