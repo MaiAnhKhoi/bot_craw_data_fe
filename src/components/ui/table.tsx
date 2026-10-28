@@ -4,11 +4,21 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+/*
+ * `containerClassName` để nơi dùng đổi lớp bọc cuộn ngang mặc định. Bảng nào tự
+ * làm khung cuộn hai chiều (hàng tiêu đề và cột ghim kiểu Excel) phải tắt lớp
+ * này đi bằng `overflow-visible`: `position: sticky` bám vào khung cuộn GẦN NHẤT
+ * phía trên, nên một lớp `overflow-x-auto` chen giữa sẽ chặn đứng việc ghim.
+ */
+function Table({
+  className,
+  containerClassName,
+  ...props
+}: React.ComponentProps<"table"> & { containerClassName?: string }) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className={cn("relative w-full overflow-x-auto", containerClassName)}
     >
       <table
         data-slot="table"

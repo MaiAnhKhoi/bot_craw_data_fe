@@ -19,6 +19,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { PaginationBar } from "@/components/shared/pagination-bar";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_PAGE_SIZE, ROUTES } from "@/lib/constants";
 import { formatNumber } from "@/lib/format";
@@ -28,6 +29,10 @@ import {
   PLACE_COLUMN_LABELS,
   placeColumns,
 } from "@/features/places/components/places/place-columns";
+import {
+  PlacesCards,
+  PlacesCardsSkeleton,
+} from "@/features/places/components/places/places-cards";
 import { PlacesFilters } from "@/features/places/components/places/places-filters";
 import { PlacesTable } from "@/features/places/components/places/places-table";
 import { useColumnVisibility } from "@/features/places/hooks/use-column-visibility";
@@ -58,6 +63,13 @@ import type { PlaceFilters, PlaceSort } from "@/features/places/types/place";
 const PAGE_SIZE_OPTIONS = [50, 100, 200];
 const DEFAULT_SORT: PlaceSort = "-liveness";
 
+/*
+ * Từ 768px (breakpoint `md`) dùng bảng có hàng tiêu đề và cột ghim; dưới đó dùng
+ * danh sách thẻ. Phải khớp với chỗ Tailwind coi là "màn nhỏ" để thanh lọc
+ * (gập sau nút "Bộ lọc" dưới `lg`) và phần thân không lệch nhau về cách chia.
+ */
+const BANG_TU_MD = "(min-width: 768px)";
+
 /** Cột hiện mặc định — dùng cho skeleton để không nhảy layout khi dữ liệu về. */
 const SKELETON_COLUMNS = placeColumns.map(
   (column) => PLACE_COLUMN_LABELS[column.id as string] ?? "",
@@ -85,6 +97,8 @@ export function PlacesScreen() {
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(DEFAULT_PAGE_SIZE);
   const [columnVisibility, setColumnVisibility] = useColumnVisibility();
+  /* `true` khi chưa có window: màn này chỉ dựng sau AuthGuard nên không lệch hydrate. */
+  const hienBang = useMediaQuery(BANG_TU_MD, true);
 
   const debouncedSearch = useDebouncedValue(search, 400);
 
@@ -214,10 +228,13 @@ export function PlacesScreen() {
         description="Toàn bộ lead đã thu thập: tên công ty, vị trí, số điện thoại, website."
         actions={
           <>
-            <ColumnVisibilityMenu
-              visibility={columnVisibility}
-              onChange={setColumnVisibility}
-            />
+            {/* Thẻ ở điện thoại không có cột để ẩn/hiện. */}
+            {hienBang ? (
+              <ColumnVisibilityMenu
+                visibility={columnVisibility}
+                onChange={setColumnVisibility}
+              />
+            ) : null}
             {/*
               * Nút xuất nhận CÙNG state cột với `ColumnVisibilityMenu` ở trên,
               * nhờ vậy lựa chọn "chỉ xuất các cột đang hiện" đọc đúng thứ người
@@ -278,7 +295,11 @@ export function PlacesScreen() {
         </div>
 
         {isPending ? (
-          <TableSkeleton columns={SKELETON_COLUMNS} rows={10} />
+          hienBang ? (
+            <TableSkeleton columns={SKELETON_COLUMNS} rows={10} />
+          ) : (
+            <PlacesCardsSkeleton />
+          )
         ) : isError ? (
           <ErrorState error={error} onRetry={() => refetch()} />
         ) : data.items.length === 0 ? (
@@ -294,12 +315,24 @@ export function PlacesScreen() {
                 isFetching ? "opacity-60 transition-opacity" : undefined
               }
             >
-              <PlacesTable
-                places={data.items}
-                columnVisibility={columnVisibility}
-                sort={filters.sort ?? DEFAULT_SORT}
-                onSortChange={(sort) => handleFiltersChange({ ...filters, sort })}
-              />
+              {hienBang ? (
+                <PlacesTable
+                  places={data.items}
+                  columnVisibility={columnVisibility}
+                  sort={filters.sort ?? DEFAULT_SORT}
+                  onSortChange={(sort) =>
+                    handleFiltersChange({ ...filters, sort })
+                  }
+                />
+              ) : (
+                <PlacesCards
+                  places={data.items}
+                  sort={filters.sort ?? DEFAULT_SORT}
+                  onSortChange={(sort) =>
+                    handleFiltersChange({ ...filters, sort })
+                  }
+                />
+              )}
             </div>
             <PaginationBar
               page={data.page}

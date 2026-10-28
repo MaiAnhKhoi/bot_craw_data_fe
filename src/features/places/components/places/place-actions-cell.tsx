@@ -3,6 +3,7 @@
 import { MapPinIcon, RefreshCwIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReverifyPlace } from "@/features/places/hooks/use-reverify-place";
+import { cn } from "@/lib/utils";
 import type { Place } from "@/features/places/types/place";
 
 /*
@@ -10,17 +11,34 @@ import type { Place } from "@/features/places/types/place";
  *
  * Link Maps mở tab mới kèm rel="noreferrer" — trang đích là bên thứ ba, không
  * có lý do gì trao cho nó `window.opener`.
+ *
+ * `touch` là bản cho thẻ ở điện thoại: hai nút biểu tượng 40px thay cho nút 28px
+ * và nút có chữ của bảng — bấm bằng chuột thì được, bằng ngón tay thì trượt. Chỉ
+ * còn biểu tượng để cả hai nằm chung hàng với ô chăm sóc (thẻ đỡ cao một hàng);
+ * tên nút vẫn có ở `aria-label` cho trình đọc màn hình.
  */
-export function PlaceActionsCell({ place }: { place: Place }) {
+export function PlaceActionsCell({
+  place,
+  touch = false,
+}: {
+  place: Place;
+  touch?: boolean;
+}) {
   const reverify = useReverifyPlace();
   const pending = reverify.isPending && reverify.variables === place.id;
 
   return (
-    <div className="flex items-center justify-end gap-1">
+    <div
+      className={cn(
+        "flex items-center",
+        touch ? "gap-2" : "justify-end gap-1",
+      )}
+    >
       {place.maps_url ? (
         <Button
-          variant="ghost"
-          size="icon-sm"
+          variant={touch ? "outline" : "ghost"}
+          size={touch ? "icon-lg" : "icon-sm"}
+          className={touch ? "size-10" : undefined}
           aria-label="Mở trên Google Maps"
           title="Mở trên Google Maps"
           /*
@@ -39,15 +57,18 @@ export function PlaceActionsCell({ place }: { place: Place }) {
       ) : null}
 
       <Button
-        variant="ghost"
-        size="sm"
+        variant={touch ? "outline" : "ghost"}
+        size={touch ? "icon-lg" : "sm"}
+        className={touch ? "size-10" : undefined}
+        aria-label="Kiểm tra lại"
+        title="Kiểm tra lại"
         disabled={pending}
         onClick={() => reverify.mutate(place.id)}
       >
         <RefreshCwIcon
           className={pending ? "animate-spin motion-reduce:animate-none" : undefined}
         />
-        Kiểm tra lại
+        {touch ? null : "Kiểm tra lại"}
       </Button>
     </div>
   );

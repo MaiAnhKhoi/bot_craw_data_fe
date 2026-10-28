@@ -64,7 +64,18 @@ import type { ContactStatus, Place } from "@/features/places/types/place";
 const HUY_HIEU =
   "inline-flex h-6 w-fit shrink-0 cursor-pointer items-center gap-1.5 rounded-4xl border border-transparent px-2 text-xs font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-60";
 
-export function ContactCell({ place }: { place: Place }) {
+/*
+ * `touch`: dùng trên thẻ ở điện thoại, nơi ngón tay thay cho con trỏ. Huy hiệu
+ * 24px và nút ghi chú 24px của bảng quá nhỏ để bấm chắc — đây là hai thao tác
+ * sale lặp lại nhiều nhất, bấm trượt là đánh dấu nhầm lead khác.
+ */
+export function ContactCell({
+  place,
+  touch = false,
+}: {
+  place: Place;
+  touch?: boolean;
+}) {
   const chamSoc = usePlaceContact();
   const meta = contactStatusMeta(place.contact_status);
   const ghiChu = place.contact_note?.trim() ?? "";
@@ -120,7 +131,11 @@ export function ContactCell({ place }: { place: Place }) {
     <div className="flex items-center gap-0.5">
       <DropdownMenu>
         <DropdownMenuTrigger
-          className={cn(HUY_HIEU, meta.badgeClass)}
+          className={cn(
+            HUY_HIEU,
+            touch && "h-10 gap-2 px-3.5 text-sm",
+            meta.badgeClass,
+          )}
           disabled={chamSoc.isPending}
           title={`${motaTrangThai}. Bấm để đổi.`}
           aria-label={`Trạng thái chăm sóc: ${meta.label}. Bấm để đổi.`}
@@ -176,7 +191,7 @@ export function ContactCell({ place }: { place: Place }) {
           render={
             <Button
               variant="ghost"
-              size="icon-xs"
+              size={touch ? "icon-lg" : "icon-xs"}
               className={
                 coGhiChu ? "text-foreground" : "text-muted-foreground/50"
               }
